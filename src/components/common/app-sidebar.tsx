@@ -35,10 +35,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     CCR Admin
                 </span>
             </SidebarHeader>
-            <SidebarContent className="px-4 py-6 gap-8">
+            <SidebarContent className="px-4 py-2 gap-2">
                 {sidebarGroups.map((group, index) => (
                     <SidebarGroup key={index} className="px-0">
-                        <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest mb-4">
+                        <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest mb-1">
                             {group.title}
                         </SidebarGroupLabel>
                         <SidebarGroupContent>
