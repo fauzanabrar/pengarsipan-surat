@@ -1,4 +1,4 @@
-import { Home, Database, Settings, Box, User, FileText, LayoutDashboard, Server, Mail, MessageCircle, Kanban, Calendar, BarChart3, Users, ShoppingCart } from "lucide-react"
+import { Home, Database, Settings, Box, User, FileText, LayoutDashboard, Server, Mail, MessageCircle, Kanban, Calendar, BarChart3, Users, ShoppingCart, Receipt } from "lucide-react"
 
 export interface SidebarSubItem {
     title: string;
@@ -50,6 +50,11 @@ export const sidebarGroups: SidebarGroup[] = [
         title: "Content & Operations",
         type: "group",
         items: [
+            {
+                title: "Purchase Requests",
+                url: "/dashboard/pr",
+                icon: Receipt,
+            },
             {
                 title: "Customers",
                 url: "/dashboard/customers",
@@ -117,6 +122,11 @@ export const sidebarGroups: SidebarGroup[] = [
         title: "Account",
         type: "group",
         items: [
+            {
+                title: "User Roles",
+                url: "/dashboard/users",
+                icon: Users,
+            },
             {
                 title: "Profile",
                 url: "/dashboard/profile",
