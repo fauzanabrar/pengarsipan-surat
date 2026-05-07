@@ -6,8 +6,22 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PRActionButtons } from './pr-actions'; // We will create this client component next
+import { PRActionButtons } from './pr-actions';
 import { PRStatusBadge } from '@/features/pr/components/status-badge';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import Link from 'next/link';
+import { ExternalLink, FileText, Image } from 'lucide-react';
+
+// Format number as Indonesian Rupiah
+function formatRupiah(amount: number): string {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(amount);
+}
 
 export default async function PRDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth();
@@ -39,6 +53,62 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
     const { pr, requester } = prData;
     const isPending = pr.status.startsWith('PENDING_');
+
+    // Helper to render file links
+    const renderFileLink = (url: string | null, label: string, icon: 'file' | 'image' = 'file') => {
+        if (!url) return null;
+        
+        const Icon = icon === 'image' ? Image : FileText;
+        
+        return (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                <a
+                    href={url.startsWith('/') ? url : url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline flex-1 truncate"
+                >
+                    {label}
+                </a>
+                <Button variant="ghost" size="sm" asChild>
+                    <Link href={url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                    </Link>
+                </Button>
+            </div>
+        );
+    };
+
+    // Render multiple verification files
+    const renderVerifikasiFiles = (urlsString: string | null) => {
+        if (!urlsString) return null;
+        
+        const urls = urlsString.split(',').map(u => u.trim()).filter(u => u !== '');
+        
+        return (
+            <div className="space-y-2">
+                {urls.map((url, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex-1 truncate"
+                        >
+                            Verification File {index + 1}
+                        </a>
+                        <Button variant="ghost" size="sm" asChild>
+                            <Link href={url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     return (
         <div className="flex-1 space-y-6 p-8 pt-6">
@@ -72,36 +142,65 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                         <CardDescription>{pr.description || 'No description provided.'}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Item</TableHead>
-                                    <TableHead className="text-right">Qty</TableHead>
-                                    <TableHead className="text-right">Price</TableHead>
-                                    <TableHead className="text-right">Total</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {items.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="font-medium">{item.name}</TableCell>
-                                        <TableCell className="text-right">{item.quantity}</TableCell>
-                                        <TableCell className="text-right">${Number(item.price).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">${(Number(item.price) * item.quantity).toLocaleString()}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                        <div className="flex justify-end mt-4 pt-4 border-t">
-                            <div className="text-lg font-bold">
-                                Total: ${Number(pr.totalAmount).toLocaleString()}
+                        {items.length > 0 ? (
+                            <>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Item</TableHead>
+                                            <TableHead className="text-right">Qty</TableHead>
+                                            <TableHead className="text-right">Price</TableHead>
+                                            <TableHead className="text-right">Total</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {items.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="font-medium">{item.name}</TableCell>
+                                                <TableCell className="text-right">{item.quantity}</TableCell>
+                                                <TableCell className="text-right">{formatRupiah(Number(item.price))}</TableCell>
+                                                <TableCell className="text-right">{formatRupiah(Number(item.price) * item.quantity)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                <div className="flex justify-end mt-4 pt-4 border-t">
+                                    <div className="text-lg font-bold">
+                                        Total: {formatRupiah(Number(pr.totalAmount))}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-muted-foreground text-sm">No items added yet. RAB will be created by GA Staff.</p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Uploaded Files */}
+                <Card className="col-span-3">
+                    <CardHeader>
+                        <CardTitle>Uploaded Files</CardTitle>
+                        <CardDescription>Documents and files for this PR.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {renderFileLink(pr.suratCabangUrl, 'Surat Cabang', 'file')}
+                        {renderFileLink(pr.gambarUrl, 'Gambar/Design', 'image')}
+                        {renderFileLink(pr.rabUrl, 'RAB Document', 'file')}
+                        {renderFileLink(pr.gaManagerApprovalUrl, 'GA Manager Approval', 'file')}
+                        {pr.verifikasiUrls && (
+                            <div>
+                                <Label className="text-sm font-medium mb-2 block">Verification Files</Label>
+                                {renderVerifikasiFiles(pr.verifikasiUrls)}
                             </div>
-                        </div>
+                        )}
+                        {!pr.suratCabangUrl && !pr.gambarUrl && !pr.rabUrl && !pr.gaManagerApprovalUrl && !pr.verifikasiUrls && (
+                            <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
+                        )}
                     </CardContent>
                 </Card>
 
                 {/* Audit Trail / Tracking Queue */}
-                <Card className="col-span-3">
+                <Card className="col-span-7">
                     <CardHeader>
                         <CardTitle>Tracking & Approvals</CardTitle>
                         <CardDescription>Activity log for this request.</CardDescription>

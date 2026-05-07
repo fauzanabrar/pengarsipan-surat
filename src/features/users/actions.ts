@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 
-export async function updateUserRole(userId: string, newRole: 'EMPLOYEE' | 'MANAGER' | 'FINANCE' | 'VP') {
+export async function updateUserRole(userId: string, newRole: 'CABANG' | 'GA_STAFF' | 'GA_MANAGER') {
     const session = await auth();
     if (!session?.user) throw new Error('Unauthorized');
 

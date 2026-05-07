@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, uuid, pgEnum, decimal, integer } from 'drizzle-orm/pg-core';
 
-export const roleEnum = pgEnum('role', ['EMPLOYEE', 'MANAGER', 'FINANCE', 'VP']);
-export const prStateEnum = pgEnum('pr_state', ['DRAFT', 'PENDING_MANAGER', 'PENDING_FINANCE', 'PENDING_VP', 'APPROVED', 'REJECTED', 'REVISION']);
+export const roleEnum = pgEnum('role', ['CABANG', 'GA_STAFF', 'GA_MANAGER']);
+export const prStateEnum = pgEnum('pr_state', ['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_GA_MANAGER', 'PENDING_CABANG_PR', 'PENDING_VERIFIKASI', 'PENDING_PENGADAAN', 'COMPLETED', 'REJECTED', 'REVISION']);
 
 export const users = pgTable('users', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -10,7 +10,7 @@ export const users = pgTable('users', {
     password: text('password').notNull(),
     name: text('name'),
     avatarUrl: text('avatar_url'),
-    role: roleEnum('role').default('EMPLOYEE').notNull(),
+    role: roleEnum('role').default('CABANG').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -20,8 +20,13 @@ export const purchaseRequests = pgTable('purchase_requests', {
     requesterId: uuid('requester_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
     title: text('title').notNull(),
     description: text('description'),
-    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
-    status: prStateEnum('status').default('DRAFT').notNull(),
+    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).default("0").notNull(),
+    status: prStateEnum('status').default('PENDING_GAMBAR').notNull(),
+    suratCabangUrl: text('surat_cabang_url'),
+    gambarUrl: text('gambar_url'),
+    rabUrl: text('rab_url'),
+    gaManagerApprovalUrl: text('ga_manager_approval_url'),
+    verifikasiUrls: text('verifikasi_urls'), // Comma-separated strings
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

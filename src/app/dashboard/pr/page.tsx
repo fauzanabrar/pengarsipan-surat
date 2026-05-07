@@ -17,6 +17,16 @@ import {
 } from '@/components/ui/table';
 import { Plus } from 'lucide-react';
 
+// Format number as Indonesian Rupiah
+function formatRupiah(amount: number): string {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(amount);
+}
+
 export default async function PRQueuePage() {
     const session = await auth();
     if (!session?.user) return null;
@@ -76,7 +86,7 @@ export default async function PRQueuePage() {
                                 <TableRow key={pr.id}>
                                     <TableCell className="font-medium">{pr.title}</TableCell>
                                     <TableCell>{requester?.name || requester?.username}</TableCell>
-                                    <TableCell>${Number(pr.totalAmount).toLocaleString()}</TableCell>
+                                    <TableCell>{formatRupiah(Number(pr.totalAmount))}</TableCell>
                                     <TableCell><PRStatusBadge status={pr.status}/></TableCell>
                                     <TableCell>{new Date(pr.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell className="text-right">

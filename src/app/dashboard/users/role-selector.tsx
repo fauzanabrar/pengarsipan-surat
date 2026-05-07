@@ -13,7 +13,7 @@ interface RoleSelectorProps {
 export function RoleSelector({ userId, currentRole }: RoleSelectorProps) {
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleRoleChange = async (newRole: "EMPLOYEE" | "MANAGER" | "FINANCE" | "VP") => {
+    const handleRoleChange = async (newRole: 'CABANG' | 'GA_STAFF' | 'GA_MANAGER') => {
         setIsLoading(true);
         try {
             await updateUserRole(userId, newRole);
@@ -31,10 +31,9 @@ export function RoleSelector({ userId, currentRole }: RoleSelectorProps) {
                 <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                <SelectItem value="MANAGER">Manager</SelectItem>
-                <SelectItem value="FINANCE">Finance</SelectItem>
-                <SelectItem value="VP">Executive (VP)</SelectItem>
+                <SelectItem value="CABANG">Cabang</SelectItem>
+                <SelectItem value="GA_STAFF">GA Staff</SelectItem>
+                <SelectItem value="GA_MANAGER">GA Manager</SelectItem>
             </SelectContent>
         </Select>
     );
