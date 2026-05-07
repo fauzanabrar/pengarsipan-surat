@@ -25,7 +25,7 @@ export default function MigrationsPage() {
                     <Button variant="outline" className="gap-2">
                         <RotateCcw className="h-4 w-4" /> Rollback
                     </Button>
-                    <Button className="gap-2 shadow-lg bg-indigo-600 hover:bg-indigo-700">
+                    <Button className="gap-2 shadow-lg bg-green-600 hover:bg-green-700">
                         <Play className="h-4 w-4" /> Run Pending
                     </Button>
                 </div>
@@ -66,7 +66,7 @@ export default function MigrationsPage() {
                 </Card>
 
                 <div className="space-y-6">
-                    <Card className="shadow-sm border-none bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+                    <Card className="shadow-sm border-none bg-gradient-to-br from-green-500 to-emerald-600 text-white">
                         <CardHeader>
                             <CardTitle className="text-lg">Deployment Status</CardTitle>
                         </CardHeader>

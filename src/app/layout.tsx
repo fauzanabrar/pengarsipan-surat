@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CCR Admin Template",
-  description: "Advanced Admin Template based on CCR",
+  title: "Sistem Manajemen Asset KALLA TOYOTA",
+  description: "Sistem Manajemen Asset KALLA TOYOTA",
 };
 
 export default function RootLayout({

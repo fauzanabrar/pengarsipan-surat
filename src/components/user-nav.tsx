@@ -33,7 +33,7 @@ export function UserNav({ user }: UserNavProps) {
                     disabled={isPending}
                 >
                     <Avatar className="h-9 w-9 border-2 border-primary/20">
-                        <AvatarFallback className="bg-gradient-to-tr from-blue-500 to-purple-600 text-white font-bold text-base">
+                        <AvatarFallback className="bg-gradient-to-tr from-green-500 to-emerald-600 text-white font-bold text-base">
                             {user.name?.[0]?.toUpperCase() || 'U'}
                         </AvatarFallback>
                     </Avatar>

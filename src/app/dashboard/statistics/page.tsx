@@ -21,7 +21,7 @@ export default function StatisticsPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="shadow-lg border-none bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+                <Card className="shadow-lg border-none bg-gradient-to-br from-green-600 to-emerald-700 text-white">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-lg font-medium opacity-80 uppercase tracking-widest text-xs">Total Revenue</CardTitle>
                     </CardHeader>
@@ -32,7 +32,7 @@ export default function StatisticsPage() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card className="shadow-lg border-none bg-gradient-to-br from-indigo-600 to-purple-700 text-white">
+                <Card className="shadow-lg border-none bg-gradient-to-br from-green-500 to-green-700 text-white">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-lg font-medium opacity-80 uppercase tracking-widest text-xs">Active Users</CardTitle>
                     </CardHeader>
@@ -43,7 +43,7 @@ export default function StatisticsPage() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card className="shadow-lg border-none bg-gradient-to-br from-purple-600 to-pink-700 text-white">
+                <Card className="shadow-lg border-none bg-gradient-to-br from-emerald-500 to-green-600 text-white">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-lg font-medium opacity-80 uppercase tracking-widest text-xs">Sales</CardTitle>
                     </CardHeader>
