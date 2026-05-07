@@ -12,6 +12,16 @@ const data = [
     { name: "Jun", total: 3800 },
 ]
 
+// Format number as Indonesian Rupiah
+function formatRupiah(amount: number): string {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(amount);
+}
+
 export default function StatisticsPage() {
     return (
         <div className="space-y-6">
@@ -26,7 +36,7 @@ export default function StatisticsPage() {
                         <CardTitle className="text-lg font-medium opacity-80 uppercase tracking-widest text-xs">Total Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-4xl font-bold">$45,231.89</div>
+                        <div className="text-4xl font-bold">{formatRupiah(452318900)}</div>
                         <p className="text-xs mt-2 opacity-70">
                             +20.1% increase from last month
                         </p>
@@ -70,7 +80,7 @@ export default function StatisticsPage() {
                                     style={{ height: `${(item.total / 5000) * 100}%` }}
                                 >
                                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                        ${item.total}
+                                        {formatRupiah(item.total * 100000)}
                                     </div>
                                 </div>
                                 <span className="text-xs font-bold text-muted-foreground">{item.name}</span>
