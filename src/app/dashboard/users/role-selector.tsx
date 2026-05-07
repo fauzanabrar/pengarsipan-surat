@@ -27,7 +27,7 @@ export function RoleSelector({ userId, currentRole }: RoleSelectorProps) {
 
     return (
         <Select defaultValue={currentRole} onValueChange={handleRoleChange} disabled={isLoading}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[160px] h-10 font-bold bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all focus:ring-primary/20 shadow-sm">
                 <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>

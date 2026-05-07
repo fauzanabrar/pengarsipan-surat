@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { logout } from "@/lib/actions"
 import { LogOut, User, Settings, ChevronDown } from "lucide-react"
 import { useTransition } from "react"
@@ -18,11 +18,14 @@ interface UserNavProps {
     user: {
         name?: string | null
         email?: string | null
+        avatarUrl?: string | null
+        image?: string | null
     }
 }
 
 export function UserNav({ user }: UserNavProps) {
     const [isPending, startTransition] = useTransition()
+    const imageUrl = user.avatarUrl || user.image
 
     return (
         <DropdownMenu>
@@ -33,6 +36,7 @@ export function UserNav({ user }: UserNavProps) {
                     disabled={isPending}
                 >
                     <Avatar className="h-9 w-9 border-2 border-primary/20">
+                        {imageUrl && <AvatarImage src={imageUrl} alt={user.name || ''} className="object-cover" />}
                         <AvatarFallback className="bg-gradient-to-tr from-green-500 to-emerald-600 text-white font-bold text-base">
                             {user.name?.[0]?.toUpperCase() || 'U'}
                         </AvatarFallback>

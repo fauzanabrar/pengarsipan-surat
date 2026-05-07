@@ -5,6 +5,7 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
+import { uploadFile } from '@/lib/file-upload';
 
 export async function updateUserRole(userId: string, newRole: 'CABANG' | 'GA_STAFF' | 'GA_MANAGER') {
     const session = await auth();
@@ -16,3 +17,48 @@ export async function updateUserRole(userId: string, newRole: 'CABANG' | 'GA_STA
     await db.update(users).set({ role: newRole }).where(eq(users.id, userId));
     revalidatePath('/dashboard/users');
 }
+
+export async function deleteUser(userId: string) {
+    const session = await auth();
+    if (!session?.user) throw new Error('Unauthorized');
+
+    await db.delete(users).where(eq(users.id, userId));
+    revalidatePath('/dashboard/users');
+}
+
+export async function updateUserDetails(userId: string, data: { name: string; email: string }) {
+    const session = await auth();
+    if (!session?.user) throw new Error('Unauthorized');
+
+    await db.update(users).set({ name: data.name, email: data.email }).where(eq(users.id, userId));
+    revalidatePath('/dashboard/users');
+}
+
+export async function updateProfile(formData: FormData) {
+    const session = await auth();
+    if (!session?.user) throw new Error('Unauthorized');
+
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const avatarFile = formData.get('avatar') as File | null;
+    const removeAvatar = formData.get('removeAvatar') === 'true';
+
+    let updateData: { name?: string; email?: string; avatarUrl?: string | null } = {};
+
+    if (name !== null) updateData.name = name;
+    if (email !== null) updateData.email = email;
+
+    if (removeAvatar) {
+        updateData.avatarUrl = null;
+    } else if (avatarFile && avatarFile.size > 0 && avatarFile.name !== 'undefined') {
+        const url = await uploadFile(avatarFile, { bucket: 'avatars' });
+        updateData.avatarUrl = url;
+    }
+
+    await db.update(users).set({
+        ...updateData,
+        updatedAt: new Date()
+    }).where(eq(users.id, session.user.id));
+    revalidatePath('/dashboard/profile');
+}
+
