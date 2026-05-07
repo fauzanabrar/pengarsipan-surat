@@ -1,4 +1,4 @@
-import { Home, Database, Settings, Box, User, FileText, LayoutDashboard, Server, Mail, MessageCircle, Kanban, Calendar, BarChart3, Users, ShoppingCart, Receipt } from "lucide-react"
+import { Home, Settings, User, Users, Receipt } from "lucide-react"
 
 export interface SidebarSubItem {
     title: string;
@@ -10,6 +10,7 @@ export interface SidebarItem {
     url?: string;
     icon?: any;
     items?: SidebarSubItem[];
+    isAdminOnly?: boolean;
 }
 
 export interface SidebarGroup {
@@ -20,7 +21,7 @@ export interface SidebarGroup {
 
 export const sidebarGroups: SidebarGroup[] = [
     {
-        title: "Main",
+        title: "Overview",
         type: "group",
         items: [
             {
@@ -31,23 +32,7 @@ export const sidebarGroups: SidebarGroup[] = [
         ]
     },
     {
-        title: "Analytics & Insights",
-        type: "group",
-        items: [
-            {
-                title: "Analytics",
-                url: "/dashboard/analytics",
-                icon: BarChart3,
-            },
-            {
-                title: "Statistics",
-                url: "/dashboard/statistics",
-                icon: LayoutDashboard,
-            },
-        ]
-    },
-    {
-        title: "Content & Operations",
+        title: "Asset Management",
         type: "group",
         items: [
             {
@@ -55,93 +40,35 @@ export const sidebarGroups: SidebarGroup[] = [
                 url: "/dashboard/pr",
                 icon: Receipt,
             },
-            {
-                title: "Customers",
-                url: "/dashboard/customers",
-                icon: Users,
-            },
-            {
-                title: "Sales",
-                url: "/dashboard/sales",
-                icon: ShoppingCart,
-            },
         ]
     },
     {
-        title: "Workspace Apps",
-        type: "group",
-        items: [
-            {
-                title: "Email",
-                url: "/dashboard/apps/email",
-                icon: Mail,
-            },
-            {
-                title: "Chat",
-                url: "/dashboard/apps/chat",
-                icon: MessageCircle,
-            },
-            {
-                title: "Kanban",
-                url: "/dashboard/apps/kanban",
-                icon: Kanban,
-            },
-            {
-                title: "Calendar",
-                url: "/dashboard/apps/calendar",
-                icon: Calendar,
-            },
-        ]
-    },
-    {
-        title: "Development",
-        type: "group",
-        items: [
-            {
-                title: "Database",
-                icon: Database,
-                items: [
-                    { title: "All Tables", url: "/dashboard/database" },
-                    { title: "Query Editor", url: "/dashboard/database/query" },
-                    { title: "Migrations", url: "/dashboard/database/migrations" },
-                ]
-            },
-            {
-                title: "Components",
-                url: "/dashboard/components",
-                icon: Box,
-            },
-            {
-                title: "API Keys",
-                url: "/dashboard/api-keys",
-                icon: Server,
-            }
-        ]
-    },
-    {
-        title: "Account",
+        title: "Administration",
         type: "group",
         items: [
             {
                 title: "User Roles",
                 url: "/dashboard/users",
                 icon: Users,
+                isAdminOnly: true,
             },
+        ]
+    },
+    {
+        title: "Settings",
+        type: "group",
+        items: [
             {
                 title: "Profile",
                 url: "/dashboard/profile",
                 icon: User,
             },
             {
-                title: "Settings",
+                title: "System Settings",
                 url: "/dashboard/settings",
                 icon: Settings,
-            },
-            {
-                title: "Documentation",
-                url: "/docs",
-                icon: FileText,
             },
         ]
     }
 ]
+
