@@ -1,11 +1,14 @@
-"use client"
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppearanceSettings } from "./appearance-settings"
 import { AccountSettings } from "./account-settings"
 import { NotificationSettings } from "./notification-settings"
+import { AdminSettings } from "./admin-settings"
+import { auth } from "@/auth"
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+    const session = await auth();
+    const isManager = session?.user?.role === 'GA_MANAGER';
+
     return (
         <div className="space-y-10">
             <div className="space-y-2">
@@ -18,6 +21,9 @@ export default function SettingsPage() {
                     <TabsTrigger value="appearance">Appearance</TabsTrigger>
                     <TabsTrigger value="account">Account</TabsTrigger>
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                    {isManager && (
+                        <TabsTrigger value="admin">Administrator</TabsTrigger>
+                    )}
                 </TabsList>
 
                 <TabsContent value="appearance">
@@ -31,6 +37,12 @@ export default function SettingsPage() {
                 <TabsContent value="notifications">
                     <NotificationSettings />
                 </TabsContent>
+
+                {isManager && (
+                    <TabsContent value="admin">
+                        <AdminSettings />
+                    </TabsContent>
+                )}
             </Tabs>
         </div>
     )

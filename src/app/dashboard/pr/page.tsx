@@ -75,8 +75,8 @@ export default async function PRQueuePage() {
                                 return (
                                     <TableRow key={pr.id}>
                                         <TableCell className="font-medium">{pr.title}</TableCell>
-                                        <TableCell>{requester?.name || requester?.username}</TableCell>
-                                        <TableCell>{requester?.name || 'Cabang Utama'}</TableCell>
+                                        <TableCell>{requester?.name || 'User'}</TableCell>
+                                        <TableCell className="text-muted-foreground">{requester?.username === 'cabang' ? 'Cabang Utama' : (requester?.username || '-')}</TableCell>
                                         <TableCell><PRStatusBadge status={pr.status} /></TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">

@@ -154,3 +154,17 @@ export async function verifikasiManager(
     revalidatePath('/dashboard/pr');
     revalidatePath(`/dashboard/pr/${prId}`);
 }
+
+export async function deleteAllPRs() {
+    const session = await auth();
+    if (!session?.user) throw new Error('Unauthorized');
+
+    if (session.user.role !== 'GA_MANAGER') {
+        throw new Error('Only GA_MANAGER can perform this action');
+    }
+
+    await db.delete(purchaseRequests);
+    
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/pr');
+}
