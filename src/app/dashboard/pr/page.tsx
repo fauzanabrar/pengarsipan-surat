@@ -49,7 +49,7 @@ export default async function PRQueuePage({
     const statusFilter = typeof s === 'string' ? s : Array.isArray(s) ? s[0] : null;
 
     const v = resolvedSearchParams.view;
-    const view = typeof v === 'string' ? v : 'todo'; // 'todo' or 'all'
+    const view = typeof v === 'string' ? v : 'all'; // 'todo' or 'all'
 
     // Determine conditions based on view
     const visibility = getVisibilityConditions(userId, userRole);
@@ -144,6 +144,13 @@ export default async function PRQueuePage({
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 w-full">
                         <div className="flex items-center gap-0.5 bg-muted/50 p-0.5 rounded-lg border w-full sm:w-auto overflow-x-auto no-scrollbar">
                             <Link 
+                                href={getLinkWithParams('all')}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all whitespace-nowrap ${view === 'all' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <History className="h-3.5 w-3.5" />
+                                <span>Semua</span>
+                            </Link>
+                            <Link 
                                 href={getLinkWithParams('todo')}
                                 className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all whitespace-nowrap ${view === 'todo' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                             >
@@ -155,13 +162,6 @@ export default async function PRQueuePage({
                                         {todoCount}
                                     </span>
                                 )}
-                            </Link>
-                            <Link 
-                                href={getLinkWithParams('all')}
-                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all whitespace-nowrap ${view === 'all' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                            >
-                                <History className="h-3.5 w-3.5" />
-                                <span>Semua</span>
                             </Link>
                         </div>
                         <div className="w-full sm:w-auto flex justify-end">
