@@ -1,7 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppearanceSettings } from "./appearance-settings"
-import { AccountSettings } from "./account-settings"
-import { NotificationSettings } from "./notification-settings"
 import { AdminSettings } from "./admin-settings"
 import { auth } from "@/auth"
 
@@ -18,8 +16,6 @@ export default async function SettingsPage() {
             <Tabs defaultValue="appearance" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="appearance">Appearance</TabsTrigger>
-                    <TabsTrigger value="account">Account</TabsTrigger>
-                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
                     {isManager && (
                         <TabsTrigger value="admin">Administrator</TabsTrigger>
                     )}
@@ -27,14 +23,6 @@ export default async function SettingsPage() {
 
                 <TabsContent value="appearance">
                     <AppearanceSettings />
-                </TabsContent>
-
-                <TabsContent value="account">
-                    <AccountSettings />
-                </TabsContent>
-
-                <TabsContent value="notifications">
-                    <NotificationSettings />
                 </TabsContent>
 
                 {isManager && (
