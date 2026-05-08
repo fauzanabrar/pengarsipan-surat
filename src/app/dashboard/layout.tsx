@@ -4,24 +4,16 @@ import { Separator } from "@/components/ui/separator"
 import { DynamicBreadcrumb } from "@/components/dynamic-breadcrumb"
 import { auth } from "@/auth"
 import { UserNav } from "@/components/user-nav"
-import { db } from "@/db"
-import { users } from "@/db/schema"
-import { eq } from "drizzle-orm"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const session = await auth()
     if (!session?.user) return null
 
-    // Fetch fresh user data from DB for the navigation bar
-    const dbUser = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-    });
-
-    if (!dbUser) return null;
+    const user = session.user;
 
     return (
         <SidebarProvider>
-            <AppSidebar user={dbUser} />
+            <AppSidebar user={user as any} />
             <main className="flex-1 flex flex-col h-screen overflow-hidden">
                 <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 bg-background z-10">
                     <div className="flex items-center gap-2">
@@ -30,7 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                         <DynamicBreadcrumb />
                     </div>
                     <div className="flex items-center gap-4">
-                        {dbUser && <UserNav user={dbUser as any} />}
+                        <UserNav user={user as any} />
                     </div>
                 </header>
                 <div className="flex-1 overflow-auto p-4 md:p-6 bg-muted/20">

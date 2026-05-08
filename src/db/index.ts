@@ -16,5 +16,15 @@ if (!connectionString) {
 }
 
 // Disable prefetch as it is not supported for "Transaction" pool mode
-const client = postgres(connectionString, { prepare: false });
+const globalForDb = global as unknown as {
+    client: postgres.Sql | undefined;
+};
+
+const client = globalForDb.client ?? postgres(connectionString, { 
+    prepare: false,
+    max: process.env.NODE_ENV === 'production' ? 20 : 5 // Limit connections in dev
+});
+
+if (process.env.NODE_ENV !== 'production') globalForDb.client = client;
+
 export const db = drizzle(client, { schema });

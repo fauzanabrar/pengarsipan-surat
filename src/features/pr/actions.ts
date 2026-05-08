@@ -3,18 +3,8 @@
 import { db } from '@/db';
 import { purchaseRequests, approvalLogs } from '@/db/schema';
 import { auth } from '@/auth';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-
-// Helper function to log approval actions
-async function logApproval(prId: string, actorId: string, action: string, notes?: string) {
-    await db.insert(approvalLogs).values({
-        prId,
-        actorId,
-        action,
-        notes: notes || `Action: ${action}`,
-    });
-}
 
 /**
  * Stage 1: All users can "Ajukan Permohonan"
@@ -26,20 +16,27 @@ export async function ajukanPermohonan(
     keterangan: string
 ) {
     const session = await auth();
-    if (!session?.user) throw new Error('Unauthorized');
+    if (!session?.user?.id) throw new Error('Unauthorized');
 
-    const [pr] = await db.insert(purchaseRequests).values({
-        requesterId: session.user.id,
-        title,
-        suratPengajuanUrl: fileUrl,
-        keteranganPengajuan: keterangan,
-        status: 'MENUNGGU_RAB',
-    }).returning();
+    return await db.transaction(async (tx) => {
+        const [pr] = await tx.insert(purchaseRequests).values({
+            requesterId: session.user.id!,
+            title,
+            suratPengajuanUrl: fileUrl,
+            keteranganPengajuan: keterangan,
+            status: 'MENUNGGU_RAB',
+        }).returning();
 
-    await logApproval(pr.id, session.user.id, 'AJUKAN', 'Mengajukan permohonan baru');
+        await tx.insert(approvalLogs).values({
+            prId: pr.id,
+            actorId: session.user.id!,
+            action: 'AJUKAN',
+            notes: 'Mengajukan permohonan baru',
+        });
 
-    revalidatePath('/dashboard/pr');
-    return pr;
+        revalidatePath('/dashboard/pr');
+        return pr;
+    });
 }
 
 /**
@@ -52,29 +49,36 @@ export async function uploadRAB(
     keterangan: string
 ) {
     const session = await auth();
-    if (!session?.user) throw new Error('Unauthorized');
-
-    const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, prId));
-    if (!pr) throw new Error('PR not found');
-
-    if (pr.status !== 'MENUNGGU_RAB') {
-        throw new Error('PR is not in MENUNGGU_RAB state');
-    }
-
+    if (!session?.user?.id) throw new Error('Unauthorized');
     if (session.user.role !== 'GA_STAFF') {
         throw new Error('Only GA_STAFF can upload RAB');
     }
 
-    await db.update(purchaseRequests)
-        .set({ 
-            rabUrl: fileUrl,
-            keteranganRab: keterangan,
-            status: 'MENUNGGU_PR',
-            updatedAt: new Date(),
-        })
-        .where(eq(purchaseRequests.id, prId));
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                rabUrl: fileUrl,
+                keteranganRab: keterangan,
+                status: 'MENUNGGU_PR',
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(purchaseRequests.id, prId),
+                eq(purchaseRequests.status, 'MENUNGGU_RAB')
+            ))
+            .returning();
 
-    await logApproval(prId, session.user.id, 'UPLOAD_RAB', 'Uploaded RAB file');
+        if (!updatedPr) {
+            throw new Error('PR not found or not in MENUNGGU_RAB state');
+        }
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'UPLOAD_RAB',
+            notes: 'Uploaded RAB file',
+        });
+    });
 
     revalidatePath('/dashboard/pr');
     revalidatePath(`/dashboard/pr/${prId}`);
@@ -90,29 +94,36 @@ export async function uploadPR(
     keterangan: string
 ) {
     const session = await auth();
-    if (!session?.user) throw new Error('Unauthorized');
-
-    const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, prId));
-    if (!pr) throw new Error('PR not found');
-
-    if (pr.status !== 'MENUNGGU_PR') {
-        throw new Error('PR is not in MENUNGGU_PR state');
-    }
-
+    if (!session?.user?.id) throw new Error('Unauthorized');
     if (session.user.role !== 'GA_STAFF') {
         throw new Error('Only GA_STAFF can upload PR');
     }
 
-    await db.update(purchaseRequests)
-        .set({ 
-            prUrl: fileUrl,
-            keteranganPr: keterangan,
-            status: 'MENUNGGU_DIVERIFIKASI',
-            updatedAt: new Date(),
-        })
-        .where(eq(purchaseRequests.id, prId));
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                prUrl: fileUrl,
+                keteranganPr: keterangan,
+                status: 'MENUNGGU_DIVERIFIKASI',
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(purchaseRequests.id, prId),
+                eq(purchaseRequests.status, 'MENUNGGU_PR')
+            ))
+            .returning();
 
-    await logApproval(prId, session.user.id, 'UPLOAD_PR', 'Uploaded PR file');
+        if (!updatedPr) {
+            throw new Error('PR not found or not in MENUNGGU_PR state');
+        }
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'UPLOAD_PR',
+            notes: 'Uploaded PR file',
+        });
+    });
 
     revalidatePath('/dashboard/pr');
     revalidatePath(`/dashboard/pr/${prId}`);
@@ -128,28 +139,35 @@ export async function verifikasiManager(
     keterangan: string
 ) {
     const session = await auth();
-    if (!session?.user) throw new Error('Unauthorized');
-
-    const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, prId));
-    if (!pr) throw new Error('PR not found');
-
-    if (pr.status !== 'MENUNGGU_DIVERIFIKASI') {
-        throw new Error('PR is not in MENUNGGU_DIVERIFIKASI state');
-    }
-
+    if (!session?.user?.id) throw new Error('Unauthorized');
     if (session.user.role !== 'GA_MANAGER') {
         throw new Error('Only GA_MANAGER can verify PR');
     }
 
-    await db.update(purchaseRequests)
-        .set({ 
-            status: action,
-            keteranganManager: keterangan,
-            updatedAt: new Date(),
-        })
-        .where(eq(purchaseRequests.id, prId));
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                status: action,
+                keteranganManager: keterangan,
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(purchaseRequests.id, prId),
+                eq(purchaseRequests.status, 'MENUNGGU_DIVERIFIKASI')
+            ))
+            .returning();
 
-    await logApproval(prId, session.user.id, action, `Manager ${action.toLowerCase()} the request`);
+        if (!updatedPr) {
+            throw new Error('PR not found or not in MENUNGGU_DIVERIFIKASI state');
+        }
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: action,
+            notes: `Manager ${action.toLowerCase()} the request`,
+        });
+    });
 
     revalidatePath('/dashboard/pr');
     revalidatePath(`/dashboard/pr/${prId}`);

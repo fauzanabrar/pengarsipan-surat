@@ -4,6 +4,7 @@ import { signIn, signOut } from "@/auth"
 import { AuthError } from "next-auth"
 import { registerSchema, loginSchema } from "./validations"
 import { UserService } from "./user-service"
+import { redirect } from "next/navigation"
 
 /**
  * Handles user registration.
@@ -20,11 +21,13 @@ export async function register(formData: FormData) {
     const { username, email } = validatedFields.data;
 
     try {
-        if (await UserService.isUsernameTaken(username)) {
+        const taken = await UserService.isIdentifierTaken(username, email || undefined);
+
+        if (taken.username) {
             return { error: "This username is already taken. Please choose another one." };
         }
 
-        if (email && await UserService.isEmailTaken(email)) {
+        if (taken.email) {
             return { error: "This email is already associated with an account." };
         }
 
@@ -36,8 +39,6 @@ export async function register(formData: FormData) {
         return { error: "Registration failed. Please try again later." };
     }
 }
-
-import { redirect } from "next/navigation"
 
 /**
  * Handles user authentication via credentials.

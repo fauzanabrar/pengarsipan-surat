@@ -22,27 +22,23 @@ export class UserService {
     }
 
     /**
-     * Checks if a username is already taken.
+     * Checks if a username or email is already taken.
      */
-    static async isUsernameTaken(username: string): Promise<boolean> {
-        const [user] = await db
-            .select({ id: users.id })
-            .from(users)
-            .where(eq(users.username, username))
-            .limit(1);
-        return !!user;
-    }
+    static async isIdentifierTaken(username: string, email?: string): Promise<{ username: boolean; email: boolean }> {
+        const filters = [eq(users.username, username)];
+        if (email) {
+            filters.push(eq(users.email, email));
+        }
 
-    /**
-     * Checks if an email is already associated with an account.
-     */
-    static async isEmailTaken(email: string): Promise<boolean> {
-        const [user] = await db
-            .select({ id: users.id })
+        const existingUsers = await db
+            .select({ username: users.username, email: users.email })
             .from(users)
-            .where(eq(users.email, email))
-            .limit(1);
-        return !!user;
+            .where(or(...filters));
+
+        return {
+            username: existingUsers.some(u => u.username === username),
+            email: email ? existingUsers.some(u => u.email === email) : false,
+        };
     }
 
     /**
