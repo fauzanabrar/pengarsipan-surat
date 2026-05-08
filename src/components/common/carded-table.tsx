@@ -21,15 +21,21 @@ export function CardedTable({
     contentClassName,
 }: CardedTableProps) {
     return (
-        <Card className={cn("border-none shadow-md", className)}>
+        <Card className={cn("border-none shadow-md ring-1 ring-black/15 dark:ring-white/10", className)}>
             {(title || description || headerContent) && (
-                <CardHeader className="px-6 py-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div className="space-y-1 text-start">
-                            {title && <CardTitle>{title}</CardTitle>}
-                            {description && <CardDescription>{description}</CardDescription>}
-                        </div>
-                        {headerContent}
+                <CardHeader className="px-4 py-2.5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        {(title || description) && (
+                            <div className="space-y-1 text-start">
+                                {title && <CardTitle>{title}</CardTitle>}
+                                {description && <CardDescription>{description}</CardDescription>}
+                            </div>
+                        )}
+                        {headerContent && (
+                            <div className={cn("w-full", (title || description) ? "md:w-auto" : "")}>
+                                {headerContent}
+                            </div>
+                        )}
                     </div>
                 </CardHeader>
             )}
