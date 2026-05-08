@@ -84,6 +84,18 @@ export default function RegisterPage() {
                         )}
                     </div>
                     <div className="grid gap-2">
+                        <Label htmlFor="location">Nama Cabang / Lokasi (Optional)</Label>
+                        <Input
+                            id="location"
+                            name="location"
+                            placeholder="Contoh: Cabang Makassar"
+                            disabled={isPending}
+                        />
+                        {errors.location && (
+                            <p className="text-xs text-red-500">{errors.location[0]}</p>
+                        )}
+                    </div>
+                    <div className="grid gap-2">
                         <Label htmlFor="password">Password</Label>
                         <Input
                             id="password"

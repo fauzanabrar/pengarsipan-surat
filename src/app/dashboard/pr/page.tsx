@@ -58,11 +58,22 @@ export default async function PRQueuePage({
     const whereFilters: (SQL | undefined)[] = [];
     
     // Visibility filter (role-based access)
-    if (visibility) whereFilters.push(visibility);
+    // For GA_STAFF in "todo" view, they see items pending their action + their own submissions
+    // For GA_STAFF in "all" view, they see everything
+    if (userRole === 'GA_STAFF' && view === 'todo') {
+        const ownRequests = eq(purchaseRequests.requesterId, userId);
+        if (actionRequired) {
+            whereFilters.push(or(ownRequests, actionRequired));
+        } else {
+            whereFilters.push(ownRequests);
+        }
+    } else {
+        if (visibility) whereFilters.push(visibility);
 
-    // View filter (Inbox vs History)
-    if (view === 'todo' && actionRequired) {
-        whereFilters.push(actionRequired);
+        // View filter (Inbox vs History)
+        if (view === 'todo' && actionRequired) {
+            whereFilters.push(actionRequired);
+        }
     }
 
     if (query) {
@@ -88,8 +99,17 @@ export default async function PRQueuePage({
 
     // Count for badge (only for "todo" view)
     const countFilters: SQL[] = [];
-    if (visibility) countFilters.push(visibility);
-    if (actionRequired) countFilters.push(actionRequired);
+    if (userRole === 'GA_STAFF') {
+        const ownRequests = eq(purchaseRequests.requesterId, userId);
+        if (actionRequired) {
+            countFilters.push(or(ownRequests, actionRequired) as SQL);
+        } else {
+            countFilters.push(ownRequests);
+        }
+    } else {
+        if (visibility) countFilters.push(visibility);
+        if (actionRequired) countFilters.push(actionRequired);
+    }
 
     const [todoCountResult] = await db.select({ total: count() })
         .from(purchaseRequests)
@@ -106,18 +126,20 @@ export default async function PRQueuePage({
     };
 
         return (
-        <div className="flex-1 space-y-2.5 p-0 max-w-7xl mx-auto w-full">
+        <div className="flex-1 space-y-6 p-0 max-w-7xl mx-auto w-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-2">
                 <div className="space-y-0.5">
                     <h2 className="text-lg md:text-xl font-bold tracking-tight text-foreground">Pengadaan Barang Jasa</h2>
                 </div>
-                <div className="flex justify-end">
-                    {userRole === 'CABANG' && <AjukanPermohonanDialog />}
-                </div>
+                {(userRole === 'CABANG' || userRole === 'GA_STAFF') && (
+                    <div className="w-full sm:w-auto flex justify-end">
+                        <AjukanPermohonanDialog />
+                    </div>
+                )}
             </div>
 
             <CardedTable
-                className="mt-2 py-4"
+                className="mt-2"
                 headerContent={
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 w-full">
                         <div className="flex items-center gap-0.5 bg-muted/50 p-0.5 rounded-lg border w-full sm:w-auto overflow-x-auto no-scrollbar">
@@ -127,7 +149,7 @@ export default async function PRQueuePage({
                             >
                                 <Inbox className="h-3.5 w-3.5" />
                                 <span className="hidden xs:inline">Perlu Diproses</span>
-                                <span className="xs:hidden">Tugas</span>
+                                <span className="xs:hidden">Perlu Diproses</span>
                                 {todoCount > 0 && (
                                     <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground font-black ml-0.5">
                                         {todoCount}
@@ -209,7 +231,7 @@ export default async function PRQueuePage({
                                         <TableCell className="py-3">
                                             <div className="flex items-center">
                                                 <span className="px-2 py-0.5 rounded-full bg-muted/50 border text-[11px] font-medium text-muted-foreground">
-                                                    {requester?.username === 'cabang' ? 'Utama' : (requester?.username || '-')}
+                                                    {requester?.location || (requester?.role === 'GA_STAFF' ? 'Head Office' : (requester?.username === 'cabang' ? 'Utama' : (requester?.username || '-')))}
                                                 </span>
                                             </div>
                                         </TableCell>

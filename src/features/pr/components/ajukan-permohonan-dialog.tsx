@@ -74,7 +74,7 @@ export function AjukanPermohonanDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" className="h-8 text-xs font-bold">
+                <Button size="sm" className="h-8 p-5 text-xs font-bold">
                     <Plus className="mr-1.5 h-3.5 w-3.5" /> 
                     <span className="hidden xs:inline">Ajukan Permohonan</span>
                     <span className="xs:hidden">Ajukan Permohonan</span>

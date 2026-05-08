@@ -11,6 +11,7 @@ export const users = pgTable('users', {
     name: text('name'),
     avatarUrl: text('avatar_url'),
     role: roleEnum('role').default('CABANG').notNull(),
+    location: text('location'), // Added for CABANG role
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

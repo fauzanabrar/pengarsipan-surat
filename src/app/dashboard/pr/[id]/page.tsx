@@ -92,7 +92,8 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">{pr.title}</h2>
                     <p className="text-muted-foreground mt-2">
-                        Diajukan oleh {requester?.name || requester?.username} pada {new Date(pr.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        Diajukan oleh {requester?.name || requester?.username} 
+                        {requester?.location || (requester?.role === 'GA_STAFF' ? ' (Head Office)' : (requester?.username === 'cabang' ? ' (Utama)' : (requester?.username ? ` (${requester.username})` : '')))} pada {new Date(pr.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
                 <div>

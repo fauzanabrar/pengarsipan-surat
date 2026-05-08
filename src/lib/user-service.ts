@@ -56,6 +56,7 @@ export class UserService {
             email: data.email || null,
             password: hashedPassword,
             name: data.name,
+            location: data.location || null,
         }).returning({
             id: users.id,
             name: users.name,
