@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, uuid, pgEnum, decimal, integer } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['CABANG', 'GA_STAFF', 'GA_MANAGER']);
-export const prStateEnum = pgEnum('pr_state', ['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_GA_MANAGER', 'PENDING_CABANG_PR', 'PENDING_VERIFIKASI', 'PENDING_PENGADAAN', 'COMPLETED', 'REJECTED', 'REVISION']);
+export const prStateEnum = pgEnum('pr_state', ['MENUNGGU_RAB', 'MENUNGGU_PR', 'MENUNGGU_DIVERIFIKASI', 'DITERIMA', 'DITOLAK']);
 
 export const users = pgTable('users', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -19,25 +19,25 @@ export const purchaseRequests = pgTable('purchase_requests', {
     id: uuid('id').defaultRandom().primaryKey(),
     requesterId: uuid('requester_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
     title: text('title').notNull(),
-    description: text('description'),
-    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).default("0").notNull(),
-    status: prStateEnum('status').default('PENDING_GAMBAR').notNull(),
-    suratCabangUrl: text('surat_cabang_url'),
-    gambarUrl: text('gambar_url'),
+    status: prStateEnum('status').default('MENUNGGU_RAB').notNull(),
+    
+    // Stage 1: Ajukan Permohonan
+    suratPengajuanUrl: text('surat_pengajuan_url'),
+    keteranganPengajuan: text('keterangan_pengajuan'),
+    
+    // Stage 2: Upload RAB (by GA Staff)
     rabUrl: text('rab_url'),
-    gaManagerApprovalUrl: text('ga_manager_approval_url'),
-    verifikasiUrls: text('verifikasi_urls'), // Comma-separated strings
+    keteranganRab: text('keterangan_rab'),
+    
+    // Stage 3: Upload PR (by GA Staff)
+    prUrl: text('pr_url'),
+    keteranganPr: text('keterangan_pr'),
+    
+    // Stage 4: Verifikasi Manager
+    keteranganManager: text('keterangan_manager'),
+
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
-export const prItems = pgTable('pr_items', {
-    id: uuid('id').defaultRandom().primaryKey(),
-    prId: uuid('pr_id').references(() => purchaseRequests.id, { onDelete: 'cascade' }).notNull(),
-    name: text('name').notNull(),
-    quantity: integer('quantity').default(1).notNull(),
-    price: decimal('price', { precision: 12, scale: 2 }).notNull(),
-    url: text('url'),
 });
 
 export const approvalLogs = pgTable('approval_logs', {
@@ -52,5 +52,4 @@ export const approvalLogs = pgTable('approval_logs', {
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
-export type PRItem = typeof prItems.$inferSelect;
 export type ApprovalLog = typeof approvalLogs.$inferSelect;

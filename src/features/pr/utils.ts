@@ -9,21 +9,14 @@ export function getRoleBasedQueueConditions(userId: string, userRole: string) {
     if (userRole === 'GA_STAFF') {
         conditions = or(
             conditions,
-            eq(purchaseRequests.status, 'PENDING_GAMBAR'),
-            eq(purchaseRequests.status, 'PENDING_RAB'),
-            eq(purchaseRequests.status, 'PENDING_VERIFIKASI'),
-            eq(purchaseRequests.status, 'PENDING_PENGADAAN')
-        ) as any;
+            eq(purchaseRequests.status, 'MENUNGGU_RAB'),
+            eq(purchaseRequests.status, 'MENUNGGU_PR')
+        ) as unknown as ReturnType<typeof eq>;
     } else if (userRole === 'GA_MANAGER') {
         conditions = or(
             conditions,
-            eq(purchaseRequests.status, 'PENDING_GA_MANAGER')
-        ) as any;
-    } else if (userRole === 'CABANG') {
-        conditions = or(
-            conditions,
-            eq(purchaseRequests.status, 'PENDING_CABANG_PR')
-        ) as any;
+            eq(purchaseRequests.status, 'MENUNGGU_DIVERIFIKASI')
+        ) as unknown as ReturnType<typeof eq>;
     }
 
     return conditions;

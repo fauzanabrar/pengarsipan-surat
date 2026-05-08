@@ -1,125 +1,201 @@
-"use client";
-
-import { useState } from "react";
+import { db } from "@/db";
+import { purchaseRequests, approvalLogs, users } from "@/db/schema";
+import { desc, eq, sql } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Activity, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Activity, TrendingUp, Users, Zap } from "lucide-react";
-import { Providers } from "@/components/Providers";
-import { Router } from "@/components/common/router";
-import { Transformers } from "@/components/Transformers";
-import { SettingsDialog } from "@/components/SettingsDialog";
-import { JsonEditor } from "@/components/JsonEditor";
-import { LogViewer } from "@/components/common/log-viewer";
-import { Save, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
-export default function Dashboard() {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isJsonEditorOpen, setIsJsonEditorOpen] = useState(false);
-  const [isLogViewerOpen, setIsLogViewerOpen] = useState(false);
+export default async function Dashboard() {
+  // Fetch overall statistics
+  const totalPrResult = await db.select({ count: sql<number>`count(*)` }).from(purchaseRequests);
+  const totalPr = totalPrResult[0].count;
+
+  const statusCounts = await db.select({
+    status: purchaseRequests.status,
+    count: sql<number>`count(*)`
+  }).from(purchaseRequests).groupBy(purchaseRequests.status);
+
+  let pendingStaff = 0;
+  let pendingManager = 0;
+  let approved = 0;
+  let rejected = 0;
+
+  for (const row of statusCounts) {
+    const count = Number(row.count);
+    if (row.status === 'MENUNGGU_RAB' || row.status === 'MENUNGGU_PR') {
+      pendingStaff += count;
+    } else if (row.status === 'MENUNGGU_DIVERIFIKASI') {
+      pendingManager += count;
+    } else if (row.status === 'DITERIMA') {
+      approved += count;
+    } else if (row.status === 'DITOLAK') {
+      rejected += count;
+    }
+  }
+
+  // Fetch recent activity
+  const recentLogs = await db.select({
+    log: approvalLogs,
+    actor: users,
+    pr: purchaseRequests
+  })
+  .from(approvalLogs)
+  .leftJoin(users, eq(approvalLogs.actorId, users.id))
+  .leftJoin(purchaseRequests, eq(approvalLogs.prId, purchaseRequests.id))
+  .orderBy(desc(approvalLogs.createdAt))
+  .limit(5);
 
   return (
-    <TooltipProvider>
-      <div className="space-y-10">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">AI Deployment Center - Manage your model providers and routing logic.</p>
+    <div className="space-y-8 p-8 pt-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-muted-foreground mt-2">Ringkasan status pengadaan barang dan jasa terkini.</p>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Providers</CardTitle>
-              <Activity className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">3</div>
-              <p className="text-xs text-muted-foreground">All systems operational</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">99.9%</div>
-              <p className="text-xs text-emerald-500">Last 30 days</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-              <Users className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">2.4K</div>
-              <p className="text-xs text-muted-foreground">This week</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Latency</CardTitle>
-              <Zap className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">145ms</div>
-              <p className="text-xs text-muted-foreground">Avg response time</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">AI Management</h2>
-            <p className="text-sm text-muted-foreground">Configure providers, routing rules, and deployment settings.</p>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => toast.success("Config saved")}>
-              <Save className="mr-2 h-4 w-4" />
-              Save Config
-            </Button>
-            <Button size="sm" onClick={() => toast.success("Restarted")}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Save & Restart
-            </Button>
-          </div>
-
-          <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-y-auto lg:overflow-hidden">
-            <div className="w-full lg:w-3/5 lg:h-full flex flex-col min-h-[500px] lg:min-h-0">
-              <Providers />
-            </div>
-            <div className="w-full lg:w-2/5 flex flex-col gap-4 lg:h-full min-h-[600px] lg:min-h-0">
-              <div className="flex-1 lg:h-3/5 min-h-[300px] lg:min-h-0">
-                <Router />
-              </div>
-              <div className="flex-1 lg:h-2/5 min-h-[200px] lg:min-h-0">
-                <Transformers />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <SettingsDialog isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
-        <JsonEditor
-          open={isJsonEditorOpen}
-          onOpenChange={setIsJsonEditorOpen}
-        />
-        <LogViewer
-          open={isLogViewerOpen}
-          onOpenChange={setIsLogViewerOpen}
-        />
+        <Button asChild>
+          <Link href="/dashboard/pr">Lihat Semua Pengajuan</Link>
+        </Button>
       </div>
-    </TooltipProvider>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Pengajuan</CardTitle>
+            <FileText className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalPr}</div>
+            <p className="text-xs text-muted-foreground">Seluruh pengajuan terdaftar</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Menunggu GA Staff</CardTitle>
+            <Clock className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingStaff}</div>
+            <p className="text-xs text-orange-500">Butuh RAB atau PR</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Menunggu Manager</CardTitle>
+            <Activity className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingManager}</div>
+            <p className="text-xs text-blue-500">Butuh verifikasi</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Selesai / Diterima</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{approved}</div>
+            <p className="text-xs text-emerald-500">Pengajuan disetujui</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Ringkasan Status</CardTitle>
+            <CardDescription>Komposisi status dari semua permohonan pengadaan barang.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <div className="w-full flex-1">
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium">Menunggu RAB & PR</span>
+                    <span className="text-muted-foreground">{(pendingStaff / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-orange-500" style={{ width: (pendingStaff / Math.max(totalPr, 1) * 100) + '%' }} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-full flex-1">
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium">Menunggu Verifikasi Manager</span>
+                    <span className="text-muted-foreground">{(pendingManager / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500" style={{ width: (pendingManager / Math.max(totalPr, 1) * 100) + '%' }} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-full flex-1">
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium">Disetujui (Diterima)</span>
+                    <span className="text-muted-foreground">{(approved / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: (approved / Math.max(totalPr, 1) * 100) + '%' }} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-full flex-1">
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium">Ditolak</span>
+                    <span className="text-muted-foreground">{(rejected / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-red-500" style={{ width: (rejected / Math.max(totalPr, 1) * 100) + '%' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Aktivitas Terkini</CardTitle>
+            <CardDescription>Log tindakan terbaru di sistem.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {recentLogs.length > 0 ? recentLogs.map(({ log, actor, pr }) => (
+                <div key={log.id} className="flex gap-4">
+                  <div className="mt-1">
+                    <div className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/20" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {actor?.name || actor?.username} {log.action.toLowerCase() === 'ajukan' ? 'mengajukan permohonan' : 
+                       log.action.toLowerCase() === 'diterima' ? 'menerima pengadaan' :
+                       log.action.toLowerCase() === 'ditolak' ? 'menolak pengadaan' :
+                       'melakukan ' + log.action.replace('_', ' ')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <Link href={'/dashboard/pr/' + pr?.id} className="hover:underline font-medium text-primary">
+                        {pr?.title || 'Pengadaan'}
+                      </Link>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(log.createdAt).toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                </div>
+              )) : (
+                <p className="text-sm text-muted-foreground">Belum ada aktivitas.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

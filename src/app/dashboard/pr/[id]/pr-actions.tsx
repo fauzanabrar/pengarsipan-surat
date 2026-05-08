@@ -1,16 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-    uploadGambar,
-    createRAB,
-    approveGAManager,
-    submitPRCabang,
-    verifikasiSpesifikasi,
-    selesaikanPengadaan,
-    rejectPurchaseRequest,
-    requestRevision,
+    uploadRAB,
+    uploadPR,
+    verifikasiManager
 } from '@/features/pr/actions';
 import { toast } from 'sonner';
 import {
@@ -21,10 +16,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ClipboardCopy } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { UniversalUploader } from '@/components/universal-uploader';
+import { uploadFile } from '@/lib/file-upload';
 
 interface PRActionButtonsProps {
     prId: string;
@@ -32,296 +27,117 @@ interface PRActionButtonsProps {
     userRole: string;
 }
 
-type UploadMethod = 'supabase' | 'local' | 'url';
-
-// Helper function to show copyable error toast
-function showErrorToast(message: string, details?: string) {
-    toast.error(
-        (t) => (
-            <div className="flex flex-col gap-2">
-                <span>{message}</span>
-                {details && (
-                    <div className="flex items-center gap-2 mt-1">
-                        <code className="text-xs bg-muted px-2 py-1 rounded max-w-md truncate">
-                            {details}
-                        </code>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => {
-                                navigator.clipboard.writeText(`${message}\n\n${details}`);
-                                toast.success('Error message copied to clipboard');
-                            }}
-                        >
-                            <ClipboardCopy className="h-3 w-3" />
-                            Copy
-                        </Button>
-                    </div>
-                )}
-            </div>
-        ),
-        { duration: 10000 }
-    );
-}
-
 export function PRActionButtons({ prId, status, userRole }: PRActionButtonsProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [uploadMethod, setUploadMethod] = useState<UploadMethod>('local');
-    const [fileUrl, setFileUrl] = useState('');
     
-    // Dialog states for different actions
-    const [showGambarDialog, setShowGambarDialog] = useState(false);
-    const [showRABDialog, setShowRABDialog] = useState(false);
-    const [showApprovalDialog, setShowApprovalDialog] = useState(false);
-    const [showPRSubmitDialog, setShowPRSubmitDialog] = useState(false);
-    const [showVerifikasiDialog, setShowVerifikasiDialog] = useState(false);
-    const [showRejectDialog, setShowRejectDialog] = useState(false);
-    const [showRevisionDialog, setShowRevisionDialog] = useState(false);
-
-    // Form refs
-    const gambarFileRef = useRef<HTMLInputElement>(null);
-    const rabFileRef = useRef<HTMLInputElement>(null);
-    const approvalFileRef = useRef<HTMLInputElement>(null);
-    const prFileRef = useRef<HTMLInputElement>(null);
-    const verifikasiFilesRef = useRef<HTMLInputElement>(null);
+    // Upload state for dialogs
+    const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [enteredUrl, setEnteredUrl] = useState("");
+    const [keterangan, setKeterangan] = useState("");
     
-    // RAB items state
-    const [rabItems, setRabItems] = useState<{ name: string; quantity: number; price: number }[]>([
-        { name: '', quantity: 1, price: 0 },
-    ]);
+    // Dialog states
+    const [showUploadRAB, setShowUploadRAB] = useState(false);
+    const [showUploadPR, setShowUploadPR] = useState(false);
+    const [showVerifikasi, setShowVerifikasi] = useState(false);
+    const [verifikasiAction, setVerifikasiAction] = useState<'DITERIMA' | 'DITOLAK'>('DITERIMA');
 
-    // Reject/Revision notes
-    const [notes, setNotes] = useState('');
+    const resetUploadState = () => {
+        setSelectedFile(null);
+        setEnteredUrl("");
+        setKeterangan("");
+        setUploadMode("file");
+    };
 
-    const handleUploadGambar = async () => {
+    const handleFileUpload = async () => {
+        let fileUrl = null;
+        if (uploadMode === "file" && selectedFile) {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            fileUrl = await uploadFile(formData);
+        } else if (uploadMode === "url" && enteredUrl) {
+            fileUrl = enteredUrl;
+        }
+        return fileUrl;
+    };
+
+    const handleUploadRABSubmit = async () => {
         setIsLoading(true);
         try {
-            const file = gambarFileRef.current?.files?.[0];
-            if (!file) {
-                toast.error('Please select a file');
+            const fileUrl = await handleFileUpload();
+            if (!fileUrl) {
+                toast.error("Mohon lampirkan dokumen RAB");
                 setIsLoading(false);
                 return;
             }
-            await uploadGambar(prId, file);
-            toast.success('Gambar uploaded successfully');
-            setShowGambarDialog(false);
-        } catch (error: any) {
-            showErrorToast(error.message || 'Failed to upload gambar', error.stack);
+            await uploadRAB(prId, fileUrl, keterangan);
+            toast.success("RAB berhasil diupload");
+            setShowUploadRAB(false);
+            resetUploadState();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Gagal upload RAB";
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleCreateRAB = async () => {
+    const handleUploadPRSubmit = async () => {
         setIsLoading(true);
         try {
-            const file = rabFileRef.current?.files?.[0];
-            const validItems = rabItems.filter(item => item.name.trim() !== '');
-
-            await createRAB(prId, validItems, file);
-            toast.success('RAB created successfully');
-            setShowRABDialog(false);
-            setRabItems([{ name: '', quantity: 1, price: 0 }]);
-        } catch (error: any) {
-            showErrorToast(error.message || 'Failed to create RAB', error.stack);
+            const fileUrl = await handleFileUpload();
+            if (!fileUrl) {
+                toast.error("Mohon lampirkan dokumen PR");
+                setIsLoading(false);
+                return;
+            }
+            await uploadPR(prId, fileUrl, keterangan);
+            toast.success("PR berhasil diupload");
+            setShowUploadPR(false);
+            resetUploadState();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Gagal upload PR";
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleApproveGAManager = async () => {
+    const handleVerifikasiSubmit = async () => {
         setIsLoading(true);
         try {
-            const file = approvalFileRef.current?.files?.[0];
-            if (!file) {
-                toast.error('Please select approval file');
+            if (verifikasiAction === 'DITOLAK' && !keterangan.trim()) {
+                toast.error("Mohon berikan alasan penolakan pada Keterangan");
                 setIsLoading(false);
                 return;
             }
-            await approveGAManager(prId, file);
-            toast.success('RAB approved successfully');
-            setShowApprovalDialog(false);
-        } catch (error: any) {
-            showErrorToast(error.message || 'Failed to approve RAB', error.stack);
+            await verifikasiManager(prId, verifikasiAction, keterangan);
+            toast.success(`Pengadaan berhasil ${verifikasiAction === 'DITERIMA' ? 'diterima' : 'ditolak'}`);
+            setShowVerifikasi(false);
+            resetUploadState();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Gagal memverifikasi pengadaan";
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleSubmitPRCabang = async () => {
-        setIsLoading(true);
-        try {
-            const file = prFileRef.current?.files?.[0];
-            if (!file) {
-                toast.error('Please select approved PR file');
-                setIsLoading(false);
-                return;
-            }
-            // Validate file size (100MB limit)
-            const maxSize = 100 * 1024 * 1024; // 100MB in bytes
-            if (file.size > maxSize) {
-                showErrorToast(
-                    'File size exceeds 100MB limit',
-                    `Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`
-                );
-                setIsLoading(false);
-                return;
-            }
-            await submitPRCabang(prId, file);
-            toast.success('PR submitted successfully');
-            setShowPRSubmitDialog(false);
-        } catch (error: any) {
-            showErrorToast(
-                error.message || 'Failed to submit PR',
-                error instanceof Error ? error.stack || error.message : String(error)
-            );
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleVerifikasiSpesifikasi = async () => {
-        setIsLoading(true);
-        try {
-            // Handle URL method
-            if (uploadMethod === 'url') {
-                const urls = fileUrl.split(',').map(u => u.trim()).filter(u => u !== '');
-                if (urls.length === 0) {
-                    toast.error('Please enter at least one URL');
-                    setIsLoading(false);
-                    return;
-                }
-                // We need to create a new action that accepts URLs
-                // For now, use the file method
-                toast.error('URL method not yet implemented - please upload files');
-                setIsLoading(false);
-                return;
-            }
-
-            const files = verifikasiFilesRef.current?.files;
-            if (!files || files.length === 0) {
-                toast.error('Please select at least one file');
-                setIsLoading(false);
-                return;
-            }
-
-            await verifikasiSpesifikasi(prId, Array.from(files));
-            toast.success('Verification files uploaded successfully');
-            setShowVerifikasiDialog(false);
-            setFileUrl('');
-        } catch (error: any) {
-            showErrorToast(error.message || 'Failed to upload verification files', error.stack);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleSelesaikanPengadaan = async () => {
-        setIsLoading(true);
-        try {
-            await selesaikanPengadaan(prId, 'Procurement completed');
-            toast.success('Pengadaan completed successfully');
-        } catch (error: any) {
-            showErrorToast(error.message || 'Failed to complete pengadaan', error.stack);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleReject = async () => {
-        setIsLoading(true);
-        try {
-            if (!notes.trim()) {
-                toast.error('Please provide a rejection reason');
-                setIsLoading(false);
-                return;
-            }
-            await rejectPurchaseRequest(prId, notes);
-            toast.error('Purchase Request rejected');
-            setShowRejectDialog(false);
-            setNotes('');
-        } catch (error: any) {
-            showErrorToast(error.message || 'Failed to reject PR', error.stack);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleRevision = async () => {
-        setIsLoading(true);
-        try {
-            if (!notes.trim()) {
-                toast.error('Please provide revision notes');
-                setIsLoading(false);
-                return;
-            }
-            await requestRevision(prId, notes);
-            toast.info('Revision requested');
-            setShowRevisionDialog(false);
-            setNotes('');
-        } catch (error: any) {
-            showErrorToast(error.message || 'Failed to request revision', error.stack);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const addRabItem = () => {
-        setRabItems([...rabItems, { name: '', quantity: 1, price: 0 }]);
-    };
-
-    const updateRabItem = (index: number, field: keyof typeof rabItems[0], value: any) => {
-        const newItems = [...rabItems];
-        newItems[index] = { ...newItems[index], [field]: field === 'name' ? value : Number(value) };
-        setRabItems(newItems);
-    };
-
-    const removeRabItem = (index: number) => {
-        if (rabItems.length > 1) {
-            const newItems = rabItems.filter((_, i) => i !== index);
-            setRabItems(newItems);
-        }
-    };
-
-    // Determine available actions based on role and status
     const getAvailableActions = () => {
         const actions: { label: string; onClick: () => void; variant?: 'default' | 'destructive' | 'outline' | 'secondary' }[] = [];
 
-        // GA_STAFF actions
         if (userRole === 'GA_STAFF') {
-            if (status === 'PENDING_GAMBAR') {
-                actions.push({ label: 'Upload Gambar', onClick: () => setShowGambarDialog(true) });
+            if (status === 'MENUNGGU_RAB') {
+                actions.push({ label: 'Upload RAB', onClick: () => setShowUploadRAB(true) });
             }
-            if (status === 'PENDING_RAB') {
-                actions.push({ label: 'Create RAB', onClick: () => setShowRABDialog(true) });
-            }
-            if (status === 'PENDING_VERIFIKASI') {
-                actions.push({ label: 'Verifikasi Spesifikasi', onClick: () => setShowVerifikasiDialog(true) });
-            }
-            if (status === 'PENDING_PENGADAAN') {
-                actions.push({ label: 'Selesaikan Pengadaan', onClick: handleSelesaikanPengadaan });
-            }
-            // Reject/Revision for GA_STAFF
-            if (['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_VERIFIKASI', 'PENDING_PENGADAAN'].includes(status)) {
-                actions.push({ label: 'Request Revision', onClick: () => setShowRevisionDialog(true), variant: 'secondary' });
-                actions.push({ label: 'Reject', onClick: () => setShowRejectDialog(true), variant: 'destructive' });
+            if (status === 'MENUNGGU_PR') {
+                actions.push({ label: 'Upload PR', onClick: () => setShowUploadPR(true) });
             }
         }
 
-        // GA_MANAGER actions
         if (userRole === 'GA_MANAGER') {
-            if (status === 'PENDING_GA_MANAGER') {
-                actions.push({ label: 'Approve RAB', onClick: () => setShowApprovalDialog(true) });
-                actions.push({ label: 'Request Revision', onClick: () => setShowRevisionDialog(true), variant: 'secondary' });
-                actions.push({ label: 'Reject', onClick: () => setShowRejectDialog(true), variant: 'destructive' });
-            }
-        }
-
-        // CABANG actions
-        if (userRole === 'CABANG') {
-            if (status === 'PENDING_CABANG_PR') {
-                actions.push({ label: 'Submit PR', onClick: () => setShowPRSubmitDialog(true) });
+            if (status === 'MENUNGGU_DIVERIFIKASI') {
+                actions.push({ label: 'Verifikasi Pengadaan', onClick: () => setShowVerifikasi(true) });
             }
         }
 
@@ -346,267 +162,118 @@ export function PRActionButtons({ prId, status, userRole }: PRActionButtonsProps
                 ))}
             </div>
 
-            {/* Upload Gambar Dialog */}
-            <Dialog open={showGambarDialog} onOpenChange={setShowGambarDialog}>
-                <DialogContent>
+            {/* Upload RAB Dialog */}
+            <Dialog open={showUploadRAB} onOpenChange={setShowUploadRAB}>
+                <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>Upload Gambar</DialogTitle>
-                        <DialogDescription>Upload the drawing/design file for this PR.</DialogDescription>
+                        <DialogTitle>Upload Dokumen RAB</DialogTitle>
+                        <DialogDescription>Upload dokumen Rencana Anggaran Biaya untuk pengadaan ini.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
+                        <UniversalUploader 
+                            currentMode={uploadMode}
+                            onModeChange={setUploadMode}
+                            onFileSelected={setSelectedFile}
+                            onUrlEntered={setEnteredUrl}
+                        />
                         <div className="grid gap-2">
-                            <Label htmlFor="gambar-file">Gambar File</Label>
-                            <Input id="gambar-file" type="file" ref={gambarFileRef} accept="image/*,.pdf" />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowGambarDialog(false)} disabled={isLoading}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleUploadGambar} disabled={isLoading}>
-                            {isLoading ? 'Uploading...' : 'Upload'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Create RAB Dialog */}
-            <Dialog open={showRABDialog} onOpenChange={setShowRABDialog}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Create RAB (Budget Plan)</DialogTitle>
-                        <DialogDescription>Add items and pricing for this PR.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="rab-file">RAB File (Optional)</Label>
-                            <Input id="rab-file" type="file" ref={rabFileRef} accept=".xlsx,.xls,.csv,.pdf" />
-                        </div>
-                        <div className="border rounded-lg p-4">
-                            <div className="flex justify-between items-center mb-4">
-                                <Label>Items</Label>
-                                <Button type="button" variant="outline" size="sm" onClick={addRabItem}>
-                                    Add Item
-                                </Button>
-                            </div>
-                            <div className="space-y-2">
-                                {rabItems.map((item, index) => (
-                                    <div key={index} className="flex gap-2 items-end">
-                                        <div className="flex-1">
-                                            <Label className="text-xs">Item Name</Label>
-                                            <Input
-                                                placeholder="Item name"
-                                                value={item.name}
-                                                onChange={(e) => updateRabItem(index, 'name', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="w-20">
-                                            <Label className="text-xs">Qty</Label>
-                                            <Input
-                                                type="number"
-                                                min="1"
-                                                value={item.quantity}
-                                                onChange={(e) => updateRabItem(index, 'quantity', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="w-32">
-                                            <Label className="text-xs">Price (Rp)</Label>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={item.price}
-                                                onChange={(e) => updateRabItem(index, 'price', e.target.value)}
-                                            />
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => removeRabItem(index)}
-                                            disabled={rabItems.length === 1}
-                                        >
-                                            ×
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowRABDialog(false)} disabled={isLoading}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleCreateRAB} disabled={isLoading}>
-                            {isLoading ? 'Creating...' : 'Create RAB'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* GA Manager Approval Dialog */}
-            <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Approve RAB</DialogTitle>
-                        <DialogDescription>Upload approval document to approve this RAB.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="approval-file">Approval File</Label>
-                            <Input id="approval-file" type="file" ref={approvalFileRef} accept=".pdf,.doc,.docx" />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowApprovalDialog(false)} disabled={isLoading}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleApproveGAManager} disabled={isLoading}>
-                            {isLoading ? 'Approving...' : 'Approve'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Cabang PR Submit Dialog */}
-            <Dialog open={showPRSubmitDialog} onOpenChange={setShowPRSubmitDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Submit PR</DialogTitle>
-                        <DialogDescription>Upload the internally approved PR file from Cabang.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="pr-file">Approved PR File</Label>
-                            <Input id="pr-file" type="file" ref={prFileRef} accept=".pdf,.doc,.docx" />
-                            <p className="text-xs text-muted-foreground">Maximum file size: 100MB</p>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowPRSubmitDialog(false)} disabled={isLoading}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSubmitPRCabang} disabled={isLoading}>
-                            {isLoading ? 'Submitting...' : 'Submit PR'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Verifikasi Spesifikasi Dialog */}
-            <Dialog open={showVerifikasiDialog} onOpenChange={setShowVerifikasiDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Verifikasi Spesifikasi</DialogTitle>
-                        <DialogDescription>Upload specification verification files (multi-file supported).</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label>Upload Method</Label>
-                            <div className="flex gap-2">
-                                <Button
-                                    type="button"
-                                    variant={uploadMethod === 'local' ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => setUploadMethod('local')}
-                                >
-                                    File Upload
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={uploadMethod === 'url' ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => setUploadMethod('url')}
-                                >
-                                    URL
-                                </Button>
-                            </div>
-                        </div>
-                        {uploadMethod === 'local' ? (
-                            <div className="grid gap-2">
-                                <Label htmlFor="verifikasi-files">Verification Files</Label>
-                                <Input id="verifikasi-files" type="file" ref={verifikasiFilesRef} multiple accept="image/*,.pdf,.xlsx,.xls,.doc,.docx" />
-                                <p className="text-xs text-muted-foreground">Select multiple files to upload</p>
-                            </div>
-                        ) : (
-                            <div className="grid gap-2">
-                                <Label htmlFor="file-urls">File URLs</Label>
-                                <Textarea
-                                    id="file-urls"
-                                    placeholder="Enter URLs separated by commas"
-                                    value={fileUrl}
-                                    onChange={(e) => setFileUrl(e.target.value)}
-                                    rows={4}
-                                />
-                                <p className="text-xs text-muted-foreground">Enter external file URLs separated by commas</p>
-                            </div>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowVerifikasiDialog(false)} disabled={isLoading}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleVerifikasiSpesifikasi} disabled={isLoading}>
-                            {isLoading ? 'Uploading...' : 'Upload Files'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Reject Dialog */}
-            <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Reject PR</DialogTitle>
-                        <DialogDescription>Provide a reason for rejecting this PR.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="reject-notes">Rejection Reason</Label>
+                            <Label>Keterangan Tambahan (Opsional)</Label>
                             <Textarea
-                                id="reject-notes"
-                                placeholder="Enter reason for rejection..."
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                rows={4}
+                                placeholder="Keterangan mengenai RAB..."
+                                value={keterangan}
+                                onChange={(e) => setKeterangan(e.target.value)}
+                                rows={3}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowRejectDialog(false)} disabled={isLoading}>
-                            Cancel
+                        <Button variant="outline" onClick={() => setShowUploadRAB(false)} disabled={isLoading}>
+                            Batal
                         </Button>
-                        <Button variant="destructive" onClick={handleReject} disabled={isLoading}>
-                            {isLoading ? 'Rejecting...' : 'Reject'}
+                        <Button onClick={handleUploadRABSubmit} disabled={isLoading}>
+                            {isLoading ? 'Mengupload...' : 'Simpan RAB'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Revision Dialog */}
-            <Dialog open={showRevisionDialog} onOpenChange={setShowRevisionDialog}>
-                <DialogContent>
+            {/* Upload PR Dialog */}
+            <Dialog open={showUploadPR} onOpenChange={setShowUploadPR}>
+                <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>Request Revision</DialogTitle>
-                        <DialogDescription>Provide notes for the required revision.</DialogDescription>
+                        <DialogTitle>Upload Dokumen PR</DialogTitle>
+                        <DialogDescription>Upload dokumen Purchase Request final.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
+                        <UniversalUploader 
+                            currentMode={uploadMode}
+                            onModeChange={setUploadMode}
+                            onFileSelected={setSelectedFile}
+                            onUrlEntered={setEnteredUrl}
+                        />
                         <div className="grid gap-2">
-                            <Label htmlFor="revision-notes">Revision Notes</Label>
+                            <Label>Keterangan Tambahan (Opsional)</Label>
                             <Textarea
-                                id="revision-notes"
-                                placeholder="Enter what needs to be revised..."
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                rows={4}
+                                placeholder="Keterangan mengenai PR..."
+                                value={keterangan}
+                                onChange={(e) => setKeterangan(e.target.value)}
+                                rows={3}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowRevisionDialog(false)} disabled={isLoading}>
-                            Cancel
+                        <Button variant="outline" onClick={() => setShowUploadPR(false)} disabled={isLoading}>
+                            Batal
                         </Button>
-                        <Button variant="secondary" onClick={handleRevision} disabled={isLoading}>
-                            {isLoading ? 'Requesting...' : 'Request Revision'}
+                        <Button onClick={handleUploadPRSubmit} disabled={isLoading}>
+                            {isLoading ? 'Mengupload...' : 'Simpan PR'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Verifikasi Manager Dialog */}
+            <Dialog open={showVerifikasi} onOpenChange={setShowVerifikasi}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Verifikasi Pengadaan</DialogTitle>
+                        <DialogDescription>Keputusan untuk menyetujui atau menolak permohonan pengadaan ini.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label>Keterangan / Catatan Manager</Label>
+                            <Textarea
+                                placeholder="Berikan catatan persetujuan atau alasan penolakan..."
+                                value={keterangan}
+                                onChange={(e) => setKeterangan(e.target.value)}
+                                rows={4}
+                            />
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <Button
+                                type="button"
+                                variant={verifikasiAction === 'DITERIMA' ? 'default' : 'outline'}
+                                className="flex-1"
+                                onClick={() => setVerifikasiAction('DITERIMA')}
+                            >
+                                Terima Pengadaan
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={verifikasiAction === 'DITOLAK' ? 'destructive' : 'outline'}
+                                className="flex-1"
+                                onClick={() => setVerifikasiAction('DITOLAK')}
+                            >
+                                Tolak Pengadaan
+                            </Button>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setShowVerifikasi(false)} disabled={isLoading}>
+                            Batal
+                        </Button>
+                        <Button onClick={handleVerifikasiSubmit} disabled={isLoading} variant={verifikasiAction === 'DITERIMA' ? 'default' : 'destructive'}>
+                            {isLoading ? 'Menyimpan...' : 'Konfirmasi Keputusan'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

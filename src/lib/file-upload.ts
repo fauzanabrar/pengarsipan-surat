@@ -20,9 +20,11 @@ export interface FileUploadOptions {
  * Supports Supabase Storage, local file system, or external URLs.
  */
 export async function uploadFile(
-    file: File,
+    formData: FormData,
     options: FileUploadOptions = {}
 ): Promise<string> {
+    const file = formData.get('file') as File;
+    if (!file) throw new Error('No file provided');
     const method = options.method ?? getFileUploadMethod();
     
     if (method === 'url') {

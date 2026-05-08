@@ -1,27 +1,14 @@
 import { db } from '@/db';
-import { purchaseRequests, prItems, approvalLogs, users } from '@/db/schema';
+import { purchaseRequests, approvalLogs, users } from '@/db/schema';
 import { auth } from '@/auth';
 import { eq, desc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { PRActionButtons } from './pr-actions';
 import { PRStatusBadge } from '@/features/pr/components/status-badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { ExternalLink, FileText, Image } from 'lucide-react';
-
-// Format number as Indonesian Rupiah
-function formatRupiah(amount: number): string {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amount);
-}
+import { ExternalLink, FileText, CheckCircle2, Circle, Clock } from 'lucide-react';
 
 export default async function PRDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth();
@@ -39,8 +26,6 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
     if (!prData) return notFound();
 
-    const items = await db.select().from(prItems).where(eq(prItems.prId, prId));
-
     // Audit Trail / Tracking Logs
     const logs = await db.select({
         log: approvalLogs,
@@ -52,22 +37,20 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
     .orderBy(desc(approvalLogs.createdAt));
 
     const { pr, requester } = prData;
-    const isPending = pr.status.startsWith('PENDING_');
+    const isPending = pr.status.startsWith('MENUNGGU_');
 
     // Helper to render file links
-    const renderFileLink = (url: string | null, label: string, icon: 'file' | 'image' = 'file') => {
+    const renderFileLink = (url: string | null, label: string) => {
         if (!url) return null;
         
-        const Icon = icon === 'image' ? Image : FileText;
-        
         return (
-            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                <Icon className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 p-3 mt-2 bg-muted/50 border rounded-md">
+                <FileText className="h-5 w-5 text-primary" />
                 <a
                     href={url.startsWith('/') ? url : url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline flex-1 truncate"
+                    className="text-sm font-medium text-primary hover:underline flex-1 truncate"
                 >
                     {label}
                 </a>
@@ -80,43 +63,36 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
         );
     };
 
-    // Render multiple verification files
-    const renderVerifikasiFiles = (urlsString: string | null) => {
-        if (!urlsString) return null;
-        
-        const urls = urlsString.split(',').map(u => u.trim()).filter(u => u !== '');
-        
+    const TimelineStep = ({ title, isActive, isCompleted, children }: { title: string, isActive: boolean, isCompleted: boolean, children?: React.ReactNode }) => {
         return (
-            <div className="space-y-2">
-                {urls.map((url, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline flex-1 truncate"
-                        >
-                            Verification File {index + 1}
-                        </a>
-                        <Button variant="ghost" size="sm" asChild>
-                            <Link href={url} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                            </Link>
-                        </Button>
+            <div className="flex gap-4 relative pb-8 last:pb-0">
+                <div className="flex flex-col items-center">
+                    <div className="z-10 bg-background">
+                        {isCompleted ? (
+                            <CheckCircle2 className="h-6 w-6 text-green-500" />
+                        ) : isActive ? (
+                            <Clock className="h-6 w-6 text-primary" />
+                        ) : (
+                            <Circle className="h-6 w-6 text-muted-foreground" />
+                        )}
                     </div>
-                ))}
+                    <div className="absolute top-6 bottom-0 left-3 w-px bg-border -z-0"></div>
+                </div>
+                <div className={`flex-1 pt-0.5 ${!isActive && !isCompleted ? 'opacity-50' : ''}`}>
+                    <h4 className="font-semibold">{title}</h4>
+                    {children}
+                </div>
             </div>
         );
     };
 
     return (
-        <div className="flex-1 space-y-6 p-8 pt-6">
+        <div className="flex-1 space-y-6 p-8 pt-6 max-w-5xl mx-auto">
             <div className="flex items-center justify-between space-y-2">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">{pr.title}</h2>
                     <p className="text-muted-foreground mt-2">
-                        Requested by {requester?.name || requester?.username} on {new Date(pr.createdAt).toLocaleDateString()}
+                        Diajukan oleh {requester?.name || requester?.username} pada {new Date(pr.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
                 <div>
@@ -126,84 +102,94 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
             {/* Action Buttons (Queue execution) */}
             {isPending && (
-                <div className="flex bg-muted/50 p-4 rounded-lg border items-center justify-between">
+                <div className="flex flex-col sm:flex-row bg-primary/5 p-4 rounded-lg border border-primary/20 sm:items-center justify-between gap-4">
                     <div>
-                        <h4 className="font-semibold text-sm">Action Required</h4>
-                        <p className="text-xs text-muted-foreground">This request is waiting for {pr.status.replace('PENDING_', '')} review.</p>
+                        <h4 className="font-semibold text-sm text-primary">Tindakan Diperlukan</h4>
+                        <p className="text-xs text-muted-foreground">Pengadaan ini sedang dalam status {pr.status.replace(/_/g, ' ')}.</p>
                     </div>
                     <PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role} />
                 </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
+            <div className="grid gap-6 md:grid-cols-3">
+                <Card className="col-span-2">
                     <CardHeader>
-                        <CardTitle>Asset Details</CardTitle>
-                        <CardDescription>{pr.description || 'No description provided.'}</CardDescription>
+                        <CardTitle>Alur Pengadaan</CardTitle>
+                        <CardDescription>Lacak status dokumen pengadaan barang/jasa ini.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        {items.length > 0 ? (
-                            <>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Item</TableHead>
-                                            <TableHead className="text-right">Qty</TableHead>
-                                            <TableHead className="text-right">Price</TableHead>
-                                            <TableHead className="text-right">Total</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {items.map(item => (
-                                            <TableRow key={item.id}>
-                                                <TableCell className="font-medium">{item.name}</TableCell>
-                                                <TableCell className="text-right">{item.quantity}</TableCell>
-                                                <TableCell className="text-right">{formatRupiah(Number(item.price))}</TableCell>
-                                                <TableCell className="text-right">{formatRupiah(Number(item.price) * item.quantity)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                <div className="flex justify-end mt-4 pt-4 border-t">
-                                    <div className="text-lg font-bold">
-                                        Total: {formatRupiah(Number(pr.totalAmount))}
-                                    </div>
+                    <CardContent className="pt-4">
+                        <div className="pl-2">
+                            <TimelineStep 
+                                title="1. Permohonan Diajukan" 
+                                isCompleted={true} 
+                                isActive={false}
+                            >
+                                <div className="mt-2 text-sm space-y-2">
+                                    {pr.keteranganPengajuan && (
+                                        <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
+                                            {pr.keteranganPengajuan}
+                                        </p>
+                                    )}
+                                    {renderFileLink(pr.suratPengajuanUrl, 'Surat Permohonan Pengajuan')}
                                 </div>
-                            </>
-                        ) : (
-                            <p className="text-muted-foreground text-sm">No items added yet. RAB will be created by GA Staff.</p>
-                        )}
-                    </CardContent>
-                </Card>
+                            </TimelineStep>
 
-                {/* Uploaded Files */}
-                <Card className="col-span-3">
-                    <CardHeader>
-                        <CardTitle>Uploaded Files</CardTitle>
-                        <CardDescription>Documents and files for this PR.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {renderFileLink(pr.suratCabangUrl, 'Surat Cabang', 'file')}
-                        {renderFileLink(pr.gambarUrl, 'Gambar/Design', 'image')}
-                        {renderFileLink(pr.rabUrl, 'RAB Document', 'file')}
-                        {renderFileLink(pr.gaManagerApprovalUrl, 'GA Manager Approval', 'file')}
-                        {pr.verifikasiUrls && (
-                            <div>
-                                <Label className="text-sm font-medium mb-2 block">Verification Files</Label>
-                                {renderVerifikasiFiles(pr.verifikasiUrls)}
-                            </div>
-                        )}
-                        {!pr.suratCabangUrl && !pr.gambarUrl && !pr.rabUrl && !pr.gaManagerApprovalUrl && !pr.verifikasiUrls && (
-                            <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
-                        )}
+                            <TimelineStep 
+                                title="2. Pembuatan RAB" 
+                                isCompleted={pr.status !== 'MENUNGGU_RAB'} 
+                                isActive={pr.status === 'MENUNGGU_RAB'}
+                            >
+                                {pr.rabUrl && (
+                                <div className="mt-2 text-sm space-y-2">
+                                    {pr.keteranganRab && (
+                                        <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
+                                            {pr.keteranganRab}
+                                        </p>
+                                    )}
+                                    {renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)')}
+                                </div>
+                                )}
+                            </TimelineStep>
+
+                            <TimelineStep 
+                                title="3. Pembuatan Dokumen PR" 
+                                isCompleted={pr.status !== 'MENUNGGU_RAB' && pr.status !== 'MENUNGGU_PR'} 
+                                isActive={pr.status === 'MENUNGGU_PR'}
+                            >
+                                {pr.prUrl && (
+                                <div className="mt-2 text-sm space-y-2">
+                                    {pr.keteranganPr && (
+                                        <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
+                                            {pr.keteranganPr}
+                                        </p>
+                                    )}
+                                    {renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final')}
+                                </div>
+                                )}
+                            </TimelineStep>
+
+                            <TimelineStep 
+                                title="4. Verifikasi Manager" 
+                                isCompleted={pr.status === 'DITERIMA' || pr.status === 'DITOLAK'} 
+                                isActive={pr.status === 'MENUNGGU_DIVERIFIKASI'}
+                            >
+                                {pr.keteranganManager && (
+                                <div className="mt-2 text-sm">
+                                    <p className={`p-3 rounded-md border-l-2 ${pr.status === 'DITOLAK' ? 'bg-red-50 text-red-700 border-red-500 dark:bg-red-950/30 dark:text-red-300' : 'bg-green-50 text-green-700 border-green-500 dark:bg-green-950/30 dark:text-green-300'}`}>
+                                        <strong>Catatan Manager:</strong> {pr.keteranganManager}
+                                    </p>
+                                </div>
+                                )}
+                            </TimelineStep>
+                        </div>
                     </CardContent>
                 </Card>
 
                 {/* Audit Trail / Tracking Queue */}
-                <Card className="col-span-7">
+                <Card className="col-span-1 h-fit">
                     <CardHeader>
-                        <CardTitle>Tracking & Approvals</CardTitle>
-                        <CardDescription>Activity log for this request.</CardDescription>
+                        <CardTitle>Riwayat Aktivitas</CardTitle>
+                        <CardDescription>Log tindakan pengguna.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -214,13 +200,13 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     </div>
                                     <div className="flex-1 space-y-1">
                                         <p className="text-sm font-medium leading-none">
-                                            {log.action} by {actor?.name || actor?.username}
+                                            {log.action} oleh {actor?.name || actor?.username}
                                         </p>
-                                        <p className="text-sm text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground">
                                             {log.notes}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            {new Date(log.createdAt).toLocaleString()}
+                                            {new Date(log.createdAt).toLocaleString('id-ID')}
                                         </p>
                                     </div>
                                 </div>

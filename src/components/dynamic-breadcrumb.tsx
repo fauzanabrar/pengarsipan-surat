@@ -13,7 +13,7 @@ import React from 'react';
 
 const routeMap: Record<string, string> = {
     dashboard: 'Dashboard',
-    pr: 'Purchase Requests',
+    pr: 'Pengadaan Barang Jasa',
     users: 'User Roles',
     profile: 'Profile',
     settings: 'Settings',

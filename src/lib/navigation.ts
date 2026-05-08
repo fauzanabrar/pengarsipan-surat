@@ -1,4 +1,4 @@
-import { Home, Settings, User, Users, Receipt } from "lucide-react"
+import { Home, Settings, User, Users, ShoppingCart } from "lucide-react"
 
 export interface SidebarSubItem {
     title: string;
@@ -36,9 +36,9 @@ export const sidebarGroups: SidebarGroup[] = [
         type: "group",
         items: [
             {
-                title: "Purchase Requests",
+                title: "Pengadaan Barang Jasa",
                 url: "/dashboard/pr",
-                icon: Receipt,
+                icon: ShoppingCart,
             },
         ]
     },

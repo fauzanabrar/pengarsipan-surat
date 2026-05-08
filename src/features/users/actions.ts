@@ -51,7 +51,9 @@ export async function updateProfile(formData: FormData) {
     if (removeAvatar) {
         updateData.avatarUrl = null;
     } else if (avatarFile && avatarFile.size > 0 && avatarFile.name !== 'undefined') {
-        const url = await uploadFile(avatarFile, { bucket: 'avatars' });
+        const formDataAvatar = new FormData();
+        formDataAvatar.append('file', avatarFile);
+        const url = await uploadFile(formDataAvatar, { bucket: 'avatars' });
         updateData.avatarUrl = url;
     }
 
