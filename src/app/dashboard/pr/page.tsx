@@ -116,9 +116,9 @@ export default async function PRQueuePage({
             </div>
 
             <CardedTable
-                className="mt-8"
+                className="mt-8 py-4"
                 headerContent={
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
+                    <div className="flex flex-col sm:flex-row justify-between w-full">
                         <div className="flex items-center gap-0.5 bg-muted/50 p-0.5 rounded-lg border w-full sm:w-auto">
                             <Link 
                                 href={getLinkWithParams('todo')}
