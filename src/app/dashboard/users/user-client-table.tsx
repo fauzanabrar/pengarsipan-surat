@@ -43,13 +43,13 @@ export function UserClientTable({ initialUsers }: { initialUsers: User[] }) {
     const limit = 5;
 
     const sortedUsers = useMemo(() => {
-        let result = [...initialUsers];
+        const result = [...initialUsers];
 
         // Sort
         if (sortColumn) {
             result.sort((a, b) => {
-                let aVal: any = '';
-                let bVal: any = '';
+                let aVal: string | number = '';
+                let bVal: string | number = '';
 
                 switch (sortColumn) {
                     case 'user':
@@ -283,7 +283,7 @@ export function UserClientTable({ initialUsers }: { initialUsers: User[] }) {
                     <DialogHeader>
                         <DialogTitle>Edit User Details</DialogTitle>
                         <DialogDescription>
-                            Make changes to {userToEdit?.username}'s profile here.
+                            Make changes to {userToEdit?.username}&apos;s profile here.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">

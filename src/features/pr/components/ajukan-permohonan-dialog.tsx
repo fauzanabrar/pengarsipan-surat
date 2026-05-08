@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { UniversalUploader } from "@/components/universal-uploader"
-import { ajukanPermohonan } from "@/features/pr/actions"
+import { createPurchaseRequest } from "@/features/pr/actions"
 import { uploadFile } from "@/lib/file-upload"
 import { toast } from "sonner"
 import { Plus } from "lucide-react"
@@ -51,12 +51,12 @@ export function AjukanPermohonanDialog() {
             }
 
             if (!fileUrl) {
-                toast.error("Mohon lampirkan dokumen (File atau URL)");
+                toast.error("Mohon lampirkan dokumen surat permohonan cabang");
                 setIsSubmitting(false);
                 return;
             }
 
-            await ajukanPermohonan(values.title, fileUrl, values.keterangan || "");
+            await createPurchaseRequest(values.title, fileUrl, values.keterangan || "");
             
             toast.success("Permohonan berhasil diajukan");
             setOpen(false);

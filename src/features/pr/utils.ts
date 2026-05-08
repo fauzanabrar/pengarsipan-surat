@@ -1,4 +1,4 @@
-import { eq, or, SQL, ne, and } from 'drizzle-orm';
+import { eq, or, SQL, and, inArray } from 'drizzle-orm';
 import { purchaseRequests } from '@/db/schema';
 
 /**
@@ -7,12 +7,10 @@ import { purchaseRequests } from '@/db/schema';
  * GA_STAFF/GA_MANAGER: Can see all requests in the system.
  */
 export function getVisibilityConditions(userId: string, userRole: string): SQL {
-    if (userRole === 'CABANG' || userRole === 'GA_STAFF') {
-        // CABANG and GA_STAFF see their own requests by default
-        // But GA_STAFF has special visibility in the "All" tab (handled in page logic)
-        if (userRole === 'CABANG') return eq(purchaseRequests.requesterId, userId);
+    if (userRole === 'CABANG') {
+        return eq(purchaseRequests.requesterId, userId);
     }
-    // GA_MANAGER can see everything, GA_STAFF can also see everything in the "All" view
+    // GA_MANAGER and GA_STAFF can see everything
     return undefined as unknown as SQL;
 }
 
@@ -21,22 +19,26 @@ export function getVisibilityConditions(userId: string, userRole: string): SQL {
  */
 export function getActionRequiredConditions(userId: string, userRole: string): SQL {
     if (userRole === 'GA_STAFF') {
-        return or(
-            eq(purchaseRequests.status, 'MENUNGGU_RAB'),
-            eq(purchaseRequests.status, 'MENUNGGU_PR')
-        ) as SQL;
+        return inArray(purchaseRequests.status, [
+            'PENDING_GAMBAR',
+            'PENDING_RAB',
+            'PENDING_VERIFIKASI',
+            'PENDING_PENGADAAN'
+        ]) as SQL;
     }
     
     if (userRole === 'GA_MANAGER') {
-        return eq(purchaseRequests.status, 'MENUNGGU_DIVERIFIKASI');
+        return eq(purchaseRequests.status, 'PENDING_GA_MANAGER');
     }
 
     if (userRole === 'CABANG') {
-        // For CABANG, "Action Required" might mean PRs that are still in progress
+        // CABANG needs to action PENDING_CABANG_PR and REVISION
         return and(
             eq(purchaseRequests.requesterId, userId),
-            ne(purchaseRequests.status, 'DITERIMA'),
-            ne(purchaseRequests.status, 'DITOLAK')
+            or(
+                eq(purchaseRequests.status, 'PENDING_CABANG_PR'),
+                eq(purchaseRequests.status, 'REVISION')
+            )
         ) as SQL;
     }
 

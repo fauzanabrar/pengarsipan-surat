@@ -9,8 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile } from '@/features/users/actions';
 import { toast } from 'sonner';
 import { UploadCloud } from 'lucide-react';
+import { User } from '@/db/schema';
 
-export function ProfileForm({ user }: { user: any }) {
+export function ProfileForm({ user }: { user: User }) {
     const [name, setName] = useState(user.name || '');
     const [email, setEmail] = useState(user.email || '');
     const [location, setLocation] = useState(user.location || '');
@@ -56,8 +57,9 @@ export function ProfileForm({ user }: { user: any }) {
             toast.success('Profile updated successfully');
             setAvatarFile(null);
             setShouldRemove(false);
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to update profile');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to update profile';
+            toast.error(message);
         } finally {
             setIsSaving(false);
         }
@@ -170,7 +172,7 @@ export function ProfileForm({ user }: { user: any }) {
                         
                         {(avatarFile || shouldRemove) && (
                             <p className="text-xs text-muted-foreground text-center">
-                                {shouldRemove ? 'Photo marked for removal.' : 'New photo selected.'} Don't forget to save!
+                                {shouldRemove ? 'Photo marked for removal.' : 'New photo selected.'} Don&apos;t forget to save!
                             </p>
                         )}
                     </CardContent>

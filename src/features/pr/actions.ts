@@ -1,18 +1,18 @@
 'use server';
 
 import { db } from '@/db';
-import { purchaseRequests, approvalLogs } from '@/db/schema';
+import { purchaseRequests, approvalLogs, prItems } from '@/db/schema';
 import { auth } from '@/auth';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Stage 1: All users can "Ajukan Permohonan"
- * Transition: -> MENUNGGU_RAB
+ * Stage 1: CABANG creates initial PR
+ * Transition: -> PENDING_GAMBAR
  */
-export async function ajukanPermohonan(
+export async function createPurchaseRequest(
     title: string,
-    fileUrl: string | null, // Pre-uploaded or direct URL
+    suratCabangUrl: string | null,
     keterangan: string
 ) {
     const session = await auth();
@@ -22,9 +22,9 @@ export async function ajukanPermohonan(
         const [pr] = await tx.insert(purchaseRequests).values({
             requesterId: session.user.id!,
             title,
-            suratPengajuanUrl: fileUrl,
+            suratCabangUrl,
             keteranganPengajuan: keterangan,
-            status: 'MENUNGGU_RAB',
+            status: 'PENDING_GAMBAR',
         }).returning();
 
         await tx.insert(approvalLogs).values({
@@ -40,43 +40,99 @@ export async function ajukanPermohonan(
 }
 
 /**
- * Stage 2: GA Staff uploads RAB
- * Transition: MENUNGGU_RAB -> MENUNGGU_PR
+ * Stage 2: GA Staff uploads Gambar
+ * Transition: PENDING_GAMBAR -> PENDING_RAB
  */
-export async function uploadRAB(
+export async function uploadGambar(
     prId: string,
-    fileUrl: string | null,
+    gambarUrl: string | null,
     keterangan: string
 ) {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
-    if (session.user.role !== 'GA_STAFF') {
-        throw new Error('Only GA_STAFF can upload RAB');
-    }
+    if (session.user.role !== 'GA_STAFF') throw new Error('Only GA_STAFF can perform this action');
 
     await db.transaction(async (tx) => {
         const [updatedPr] = await tx.update(purchaseRequests)
             .set({ 
-                rabUrl: fileUrl,
+                gambarUrl,
+                keteranganGambar: keterangan,
+                status: 'PENDING_RAB',
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(purchaseRequests.id, prId),
+                or(
+                    eq(purchaseRequests.status, 'PENDING_GAMBAR'),
+                    eq(purchaseRequests.status, 'REVISION')
+                )
+            ))
+            .returning();
+
+        if (!updatedPr) throw new Error('PR not found or in invalid state');
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'UPLOAD_GAMBAR',
+            notes: 'Uploaded drawings/designs',
+        });
+    });
+
+    revalidatePath('/dashboard/pr');
+    revalidatePath(`/dashboard/pr/${prId}`);
+}
+
+/**
+ * Stage 3: GA Staff creates RAB with items
+ * Transition: PENDING_RAB -> PENDING_GA_MANAGER
+ */
+export async function createRAB(
+    prId: string,
+    rabUrl: string | null,
+    keterangan: string,
+    items?: { name: string; quantity: number; price: string }[]
+) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+    if (session.user.role !== 'GA_STAFF') throw new Error('Only GA_STAFF can perform this action');
+
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                rabUrl,
                 keteranganRab: keterangan,
-                status: 'MENUNGGU_PR',
+                status: 'PENDING_GA_MANAGER',
                 updatedAt: new Date(),
             })
             .where(and(
                 eq(purchaseRequests.id, prId),
-                eq(purchaseRequests.status, 'MENUNGGU_RAB')
+                or(
+                    eq(purchaseRequests.status, 'PENDING_RAB'),
+                    eq(purchaseRequests.status, 'REVISION')
+                )
             ))
             .returning();
 
-        if (!updatedPr) {
-            throw new Error('PR not found or not in MENUNGGU_RAB state');
+        if (!updatedPr) throw new Error('PR not found or in invalid state');
+
+        if (items && items.length > 0) {
+            await tx.delete(prItems).where(eq(prItems.prId, prId));
+            await tx.insert(prItems).values(
+                items.map(item => ({
+                    prId,
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.price,
+                }))
+            );
         }
 
         await tx.insert(approvalLogs).values({
             prId,
             actorId: session.user.id!,
-            action: 'UPLOAD_RAB',
-            notes: 'Uploaded RAB file',
+            action: 'CREATE_RAB',
+            notes: 'Created RAB with items',
         });
     });
 
@@ -85,43 +141,87 @@ export async function uploadRAB(
 }
 
 /**
- * Stage 3: GA Staff uploads PR
- * Transition: MENUNGGU_PR -> MENUNGGU_DIVERIFIKASI
+ * Stage 4: GA Manager Approval
+ * Transition: PENDING_GA_MANAGER -> PENDING_CABANG_PR
  */
-export async function uploadPR(
+export async function approveGAManager(
     prId: string,
-    fileUrl: string | null,
+    approvalUrl: string | null,
     keterangan: string
 ) {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
-    if (session.user.role !== 'GA_STAFF') {
-        throw new Error('Only GA_STAFF can upload PR');
-    }
+    if (session.user.role !== 'GA_MANAGER') throw new Error('Only GA_MANAGER can perform this action');
 
     await db.transaction(async (tx) => {
         const [updatedPr] = await tx.update(purchaseRequests)
             .set({ 
-                prUrl: fileUrl,
+                gaManagerApprovalUrl: approvalUrl,
+                keteranganGaManager: keterangan,
+                status: 'PENDING_CABANG_PR',
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(purchaseRequests.id, prId),
+                or(
+                    eq(purchaseRequests.status, 'PENDING_GA_MANAGER'),
+                    eq(purchaseRequests.status, 'REVISION')
+                )
+            ))
+            .returning();
+
+        if (!updatedPr) throw new Error('PR not found or in invalid state');
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'APPROVE_GA_MANAGER',
+            notes: 'GA Manager approved the budget',
+        });
+    });
+
+    revalidatePath('/dashboard/pr');
+    revalidatePath(`/dashboard/pr/${prId}`);
+}
+
+/**
+ * Stage 5: CABANG uploads approved PR file
+ * Transition: PENDING_CABANG_PR -> PENDING_VERIFIKASI
+ */
+export async function submitPRCabang(
+    prId: string,
+    prUrl: string | null,
+    keterangan: string
+) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+    // Ideally only the original requester can submit this, but CABANG role is enough for now
+    if (session.user.role !== 'CABANG') throw new Error('Only CABANG can perform this action');
+
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                prUrl,
                 keteranganPr: keterangan,
-                status: 'MENUNGGU_DIVERIFIKASI',
+                status: 'PENDING_VERIFIKASI',
                 updatedAt: new Date(),
             })
             .where(and(
                 eq(purchaseRequests.id, prId),
-                eq(purchaseRequests.status, 'MENUNGGU_PR')
+                or(
+                    eq(purchaseRequests.status, 'PENDING_CABANG_PR'),
+                    eq(purchaseRequests.status, 'REVISION')
+                )
             ))
             .returning();
 
-        if (!updatedPr) {
-            throw new Error('PR not found or not in MENUNGGU_PR state');
-        }
+        if (!updatedPr) throw new Error('PR not found or in invalid state');
 
         await tx.insert(approvalLogs).values({
             prId,
             actorId: session.user.id!,
-            action: 'UPLOAD_PR',
-            notes: 'Uploaded PR file',
+            action: 'SUBMIT_PR',
+            notes: 'Cabang uploaded approved PR document',
         });
     });
 
@@ -130,42 +230,138 @@ export async function uploadPR(
 }
 
 /**
- * Stage 4: GA Manager Verification
- * Transition: MENUNGGU_DIVERIFIKASI -> DITERIMA or DITOLAK
+ * Stage 6: GA Staff uploads verification files
+ * Transition: PENDING_VERIFIKASI -> PENDING_PENGADAAN
  */
-export async function verifikasiManager(
+export async function verifikasiSpesifikasi(
     prId: string,
-    action: 'DITERIMA' | 'DITOLAK',
+    verifikasiUrls: string | null, // Made optional
     keterangan: string
 ) {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
-    if (session.user.role !== 'GA_MANAGER') {
-        throw new Error('Only GA_MANAGER can verify PR');
-    }
+    if (session.user.role !== 'GA_STAFF') throw new Error('Only GA_STAFF can perform this action');
 
     await db.transaction(async (tx) => {
         const [updatedPr] = await tx.update(purchaseRequests)
             .set({ 
-                status: action,
-                keteranganManager: keterangan,
+                verifikasiUrls,
+                keteranganVerifikasi: keterangan,
+                status: 'PENDING_PENGADAAN',
                 updatedAt: new Date(),
             })
             .where(and(
                 eq(purchaseRequests.id, prId),
-                eq(purchaseRequests.status, 'MENUNGGU_DIVERIFIKASI')
+                or(
+                    eq(purchaseRequests.status, 'PENDING_VERIFIKASI'),
+                    eq(purchaseRequests.status, 'REVISION')
+                )
             ))
             .returning();
 
-        if (!updatedPr) {
-            throw new Error('PR not found or not in MENUNGGU_DIVERIFIKASI state');
-        }
+        if (!updatedPr) throw new Error('PR not found or in invalid state');
 
         await tx.insert(approvalLogs).values({
             prId,
             actorId: session.user.id!,
-            action: action,
-            notes: `Manager ${action.toLowerCase()} the request`,
+            action: 'VERIFIKASI',
+            notes: 'GA Staff verified specifications and items',
+        });
+    });
+
+    revalidatePath('/dashboard/pr');
+    revalidatePath(`/dashboard/pr/${prId}`);
+}
+
+/**
+ * Stage 7: GA Staff completes procurement
+ * Transition: PENDING_PENGADAAN -> COMPLETED
+ */
+export async function selesaikanPengadaan(
+    prId: string,
+    keterangan: string
+) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+    if (session.user.role !== 'GA_STAFF') throw new Error('Only GA_STAFF can perform this action');
+
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                keteranganSelesai: keterangan,
+                status: 'COMPLETED',
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(purchaseRequests.id, prId),
+                or(
+                    eq(purchaseRequests.status, 'PENDING_PENGADAAN'),
+                    eq(purchaseRequests.status, 'REVISION')
+                )
+            ))
+            .returning();
+
+        if (!updatedPr) throw new Error('PR not found or in invalid state');
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'COMPLETE',
+            notes: 'Procurement process completed',
+        });
+    });
+
+    revalidatePath('/dashboard/pr');
+    revalidatePath(`/dashboard/pr/${prId}`);
+}
+
+export async function rejectPurchaseRequest(prId: string, notes: string) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                status: 'REJECTED',
+                updatedAt: new Date(),
+            })
+            .where(eq(purchaseRequests.id, prId))
+            .returning();
+
+        if (!updatedPr) throw new Error('PR not found');
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'REJECT',
+            notes: notes || 'Permohonan ditolak',
+        });
+    });
+
+    revalidatePath('/dashboard/pr');
+    revalidatePath(`/dashboard/pr/${prId}`);
+}
+
+export async function requestRevision(prId: string, notes: string) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+
+    await db.transaction(async (tx) => {
+        const [updatedPr] = await tx.update(purchaseRequests)
+            .set({ 
+                status: 'REVISION',
+                updatedAt: new Date(),
+            })
+            .where(eq(purchaseRequests.id, prId))
+            .returning();
+
+        if (!updatedPr) throw new Error('PR not found');
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'REVISION',
+            notes: notes || 'Revisi diperlukan',
         });
     });
 
@@ -182,6 +378,28 @@ export async function deleteAllPRs() {
     }
 
     await db.delete(purchaseRequests);
+    
+    // Delete local files in public/uploads
+    try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+        
+        const exists = await fs.access(uploadDir).then(() => true).catch(() => false);
+        
+        if (exists) {
+            const files = await fs.readdir(uploadDir);
+            for (const file of files) {
+                if (file !== '.gitkeep') {
+                    await fs.unlink(path.join(uploadDir, file)).catch(err => {
+                        console.error(`Failed to delete file ${file}:`, err);
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to clear local uploads directory:', error);
+    }
     
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/pr');

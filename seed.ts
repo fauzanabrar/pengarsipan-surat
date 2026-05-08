@@ -44,15 +44,15 @@ async function seed() {
     console.log(`  - GA_STAFF: ${gaStaffUser.username} (${gaStaffUser.id})`);
     console.log(`  - GA_MANAGER: ${gaManagerUser.username} (${gaManagerUser.id})`);
 
-    // Create a sample PR in MENUNGGU_RAB state
+    // Create a sample PR in PENDING_GAMBAR state
     console.log('\nCreating sample PR...');
     
     const [samplePR] = await db.insert(purchaseRequests).values({
         requesterId: cabangUser.id,
         title: 'Pengadaan Komputer Cabang Jakarta',
-        suratPengajuanUrl: 'https://example.com/surat.pdf',
+        suratCabangUrl: 'https://example.com/surat.pdf',
         keteranganPengajuan: 'Kebutuhan komputer baru untuk kantor cabang Jakarta',
-        status: 'MENUNGGU_RAB',
+        status: 'PENDING_GAMBAR',
     }).returning();
 
     console.log(`Created sample PR: ${samplePR.title} (${samplePR.id})`);

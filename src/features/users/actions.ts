@@ -44,7 +44,7 @@ export async function updateProfile(formData: FormData) {
     const avatarFile = formData.get('avatar') as File | null;
     const removeAvatar = formData.get('removeAvatar') === 'true';
 
-    let updateData: { name?: string; email?: string; location?: string; avatarUrl?: string | null } = {};
+    const updateData: { name?: string; email?: string; location?: string; avatarUrl?: string | null } = {};
 
     if (name !== null) updateData.name = name;
     if (email !== null) updateData.email = email;

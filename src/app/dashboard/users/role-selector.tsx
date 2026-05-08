@@ -18,8 +18,9 @@ export function RoleSelector({ userId, currentRole }: RoleSelectorProps) {
         try {
             await updateUserRole(userId, newRole);
             toast.success('User role updated successfully');
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to update user role');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to update user role';
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }

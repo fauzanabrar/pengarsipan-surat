@@ -2,14 +2,14 @@ import { db } from "@/db";
 import { purchaseRequests, approvalLogs, users } from "@/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { Activity, Clock, CheckCircle2, FileText } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default async function Dashboard() {
   // Fetch overall statistics
   const totalPrResult = await db.select({ count: sql<number>`count(*)` }).from(purchaseRequests);
-  const totalPr = totalPrResult[0].count;
+  const totalPr = Number(totalPrResult[0].count);
 
   const statusCounts = await db.select({
     status: purchaseRequests.status,
@@ -18,18 +18,21 @@ export default async function Dashboard() {
 
   let pendingStaff = 0;
   let pendingManager = 0;
-  let approved = 0;
+  let inProgress = 0;
+  let completed = 0;
   let rejected = 0;
 
   for (const row of statusCounts) {
     const count = Number(row.count);
-    if (row.status === 'MENUNGGU_RAB' || row.status === 'MENUNGGU_PR') {
+    if (['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_VERIFIKASI', 'PENDING_PENGADAAN'].includes(row.status)) {
       pendingStaff += count;
-    } else if (row.status === 'MENUNGGU_DIVERIFIKASI') {
+    } else if (row.status === 'PENDING_GA_MANAGER') {
       pendingManager += count;
-    } else if (row.status === 'DITERIMA') {
-      approved += count;
-    } else if (row.status === 'DITOLAK') {
+    } else if (row.status === 'PENDING_CABANG_PR' || row.status === 'REVISION') {
+      inProgress += count;
+    } else if (row.status === 'COMPLETED') {
+      completed += count;
+    } else if (row.status === 'REJECTED') {
       rejected += count;
     }
   }
@@ -77,7 +80,7 @@ export default async function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingStaff}</div>
-            <p className="text-xs text-orange-500">Butuh RAB atau PR</p>
+            <p className="text-xs text-orange-500">Butuh aksi GA Staff</p>
           </CardContent>
         </Card>
 
@@ -88,18 +91,18 @@ export default async function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingManager}</div>
-            <p className="text-xs text-blue-500">Butuh verifikasi</p>
+            <p className="text-xs text-blue-500">Butuh approval manager</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Selesai / Diterima</CardTitle>
+            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{approved}</div>
-            <p className="text-xs text-emerald-500">Pengajuan disetujui</p>
+            <div className="text-2xl font-bold">{completed}</div>
+            <p className="text-xs text-emerald-500">Pengadaan selesai</p>
           </CardContent>
         </Card>
       </div>
@@ -115,7 +118,7 @@ export default async function Dashboard() {
               <div className="flex items-center">
                 <div className="w-full flex-1">
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="font-medium">Menunggu RAB & PR</span>
+                    <span className="font-medium">Menunggu GA Staff</span>
                     <span className="text-muted-foreground">{(pendingStaff / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
                   </div>
                   <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
@@ -126,7 +129,7 @@ export default async function Dashboard() {
               <div className="flex items-center">
                 <div className="w-full flex-1">
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="font-medium">Menunggu Verifikasi Manager</span>
+                    <span className="font-medium">Menunggu GA Manager</span>
                     <span className="text-muted-foreground">{(pendingManager / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
                   </div>
                   <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
@@ -137,11 +140,11 @@ export default async function Dashboard() {
               <div className="flex items-center">
                 <div className="w-full flex-1">
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="font-medium">Disetujui (Diterima)</span>
-                    <span className="text-muted-foreground">{(approved / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
+                    <span className="font-medium">Selesai</span>
+                    <span className="text-muted-foreground">{(completed / Math.max(totalPr, 1) * 100).toFixed(1)}%</span>
                   </div>
                   <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500" style={{ width: (approved / Math.max(totalPr, 1) * 100) + '%' }} />
+                    <div className="h-full bg-emerald-500" style={{ width: (completed / Math.max(totalPr, 1) * 100) + '%' }} />
                   </div>
                 </div>
               </div>
@@ -174,10 +177,12 @@ export default async function Dashboard() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {actor?.name || actor?.username} {log.action.toLowerCase() === 'ajukan' ? 'mengajukan permohonan' : 
-                       log.action.toLowerCase() === 'diterima' ? 'menerima pengadaan' :
-                       log.action.toLowerCase() === 'ditolak' ? 'menolak pengadaan' :
-                       'melakukan ' + log.action.replace('_', ' ')}
+                      {actor?.name || actor?.username} {
+                        log.action.toLowerCase() === 'ajukan' ? 'mengajukan permohonan' : 
+                        log.action.toLowerCase() === 'complete' ? 'menyelesaikan pengadaan' :
+                        log.action.toLowerCase() === 'reject' ? 'menolak pengadaan' :
+                        'melakukan ' + log.action.replace(/_/g, ' ').toLowerCase()
+                      }
                     </p>
                     <p className="text-xs text-muted-foreground">
                       <Link href={'/dashboard/pr/' + pr?.id} className="hover:underline font-medium text-primary">

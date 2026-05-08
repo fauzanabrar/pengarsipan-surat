@@ -3,12 +3,13 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition, useState, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useTransition, useState, useEffect, useCallback } from "react";
 
 export function PRFilters() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const pathname = usePathname();
     const [isPending, startTransition] = useTransition();
 
     const currentQuery = searchParams.get('q') || '';
@@ -21,6 +22,19 @@ export function PRFilters() {
     }, [currentQuery]);
 
     // Handle debounced search
+    const handleSearch = useCallback((term: string) => {
+        const params = new URLSearchParams(searchParams);
+        if (term) {
+            params.set('q', term);
+        } else {
+            params.delete('q');
+        }
+        
+        router.push(`${pathname}?${params.toString()}`, {
+            scroll: false,
+        });
+    }, [searchParams, pathname, router]);
+
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             if (searchTerm !== (searchParams.get('q') || '')) {
@@ -28,19 +42,7 @@ export function PRFilters() {
             }
         }, 400);
         return () => clearTimeout(timeoutId);
-    }, [searchTerm]);
-
-    const handleSearch = (term: string) => {
-        const params = new URLSearchParams(searchParams);
-        if (term) {
-            params.set('q', term);
-        } else {
-            params.delete('q');
-        }
-        startTransition(() => {
-            router.push(`?${params.toString()}`);
-        });
-    };
+    }, [searchTerm, searchParams, handleSearch]);
 
     const handleStatusChange = (value: string) => {
         const params = new URLSearchParams(searchParams);
