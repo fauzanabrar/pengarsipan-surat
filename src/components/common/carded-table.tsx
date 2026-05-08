@@ -23,7 +23,7 @@ export function CardedTable({
     return (
         <Card className={cn("border-none shadow-md ring-1 ring-black/15 dark:ring-white/10 gap-0 py-0", className)}>
             {(title || description || headerContent) && (
-                <CardHeader className="px-4 pt-3 pb-2">
+                <CardHeader className="px-4 pt-3 pb-4">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                         {(title || description) && (
                             <div className="space-y-1 text-start">
