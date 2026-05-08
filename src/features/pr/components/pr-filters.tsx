@@ -55,27 +55,27 @@ export function PRFilters() {
     };
 
     return (
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-48 lg:w-64">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                    placeholder="Cari pengadaan, nama, atau cabang..."
-                    className="pl-9 bg-background"
+                    placeholder="Cari..."
+                    className="pl-8 bg-background h-8 text-xs"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
             <Select defaultValue={currentStatus} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-background">
-                    <SelectValue placeholder="Semua Status" />
+                <SelectTrigger className="w-full sm:w-[140px] bg-background h-8 text-xs">
+                    <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="ALL">Semua Status</SelectItem>
-                    <SelectItem value="MENUNGGU_RAB">Menunggu RAB</SelectItem>
-                    <SelectItem value="MENUNGGU_PR">Menunggu PR</SelectItem>
-                    <SelectItem value="MENUNGGU_DIVERIFIKASI">Menunggu Verifikasi</SelectItem>
-                    <SelectItem value="DITERIMA">Diterima</SelectItem>
-                    <SelectItem value="DITOLAK">Ditolak</SelectItem>
+                    <SelectItem value="ALL" className="text-xs">Semua Status</SelectItem>
+                    <SelectItem value="MENUNGGU_RAB" className="text-xs">Menunggu RAB</SelectItem>
+                    <SelectItem value="MENUNGGU_PR" className="text-xs">Menunggu PR</SelectItem>
+                    <SelectItem value="MENUNGGU_DIVERIFIKASI" className="text-xs">Menunggu Verifikasi</SelectItem>
+                    <SelectItem value="DITERIMA" className="text-xs">Diterima</SelectItem>
+                    <SelectItem value="DITOLAK" className="text-xs">Ditolak</SelectItem>
                 </SelectContent>
             </Select>
         </div>

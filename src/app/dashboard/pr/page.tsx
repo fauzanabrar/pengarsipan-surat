@@ -105,28 +105,29 @@ export default async function PRQueuePage({
         return `?${params.toString()}`;
     };
 
-    return (
-        <div className="flex-1 space-y-2 p-0 max-w-7xl mx-auto w-full">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        return (
+        <div className="flex-1 space-y-2.5 p-0 max-w-7xl mx-auto w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-2">
                 <div className="space-y-0.5">
-                    <h2 className="text-xl font-bold tracking-tight text-foreground">Pengadaan Barang Jasa</h2>
-                    
+                    <h2 className="text-lg md:text-xl font-bold tracking-tight text-foreground">Pengadaan Barang Jasa</h2>
                 </div>
-                {userRole === 'CABANG' && <AjukanPermohonanDialog />}
+                <div className="flex justify-end">
+                    {userRole === 'CABANG' && <AjukanPermohonanDialog />}
+                </div>
             </div>
 
             <CardedTable
-                className="mt-8 py-4"
+                className="mt-2 py-4"
                 headerContent={
-                    <div className="flex flex-col sm:flex-row justify-between w-full">
-                        <div className="flex items-center gap-0.5 bg-muted/50 p-0.5 rounded-lg border w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 w-full">
+                        <div className="flex items-center gap-0.5 bg-muted/50 p-0.5 rounded-lg border w-full sm:w-auto overflow-x-auto no-scrollbar">
                             <Link 
                                 href={getLinkWithParams('todo')}
-                                className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-bold transition-all ${view === 'todo' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all whitespace-nowrap ${view === 'todo' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                             >
                                 <Inbox className="h-3.5 w-3.5" />
                                 <span className="hidden xs:inline">Perlu Diproses</span>
-                                <span className="xs:hidden">Perlu Diproses</span>
+                                <span className="xs:hidden">Tugas</span>
                                 {todoCount > 0 && (
                                     <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground font-black ml-0.5">
                                         {todoCount}
@@ -135,7 +136,7 @@ export default async function PRQueuePage({
                             </Link>
                             <Link 
                                 href={getLinkWithParams('all')}
-                                className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-bold transition-all ${view === 'all' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all whitespace-nowrap ${view === 'all' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                             >
                                 <History className="h-3.5 w-3.5" />
                                 <span>Semua</span>
