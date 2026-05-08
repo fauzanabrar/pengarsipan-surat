@@ -18,12 +18,7 @@ export default async function ProfilePage() {
     if (!dbUser) return null;
 
     return (
-        <div className="flex-1 space-y-10 p-8 pt-6 max-w-6xl mx-auto">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-black tracking-tight">Profile</h1>
-                <p className="text-muted-foreground text-lg">Manage your personal information and system avatar.</p>
-            </div>
-
+        <div className="flex-1 space-y-10  max-w-6xl mx-auto">
             <ProfileForm key={dbUser.updatedAt.getTime()} user={dbUser} />
         </div>
     )

@@ -10,10 +10,9 @@ export default async function SettingsPage() {
     const isManager = session?.user?.role === 'GA_MANAGER';
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-4">
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground">Manage your application preferences and account settings.</p>
             </div>
 
             <Tabs defaultValue="appearance" className="space-y-4">
