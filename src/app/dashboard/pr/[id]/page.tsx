@@ -8,10 +8,11 @@ import { PRActionButtons } from './pr-actions';
 import { PRStatusBadge } from '@/features/pr/components/status-badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ExternalLink, FileText, CheckCircle2, Circle, Clock, ReceiptText, AlertCircle } from 'lucide-react';
+import { ExternalLink, FileText, CheckCircle2, Circle, Clock, ReceiptText, AlertCircle, History } from 'lucide-react';
 import { PRFileActions } from './file-actions';
 import { PREditableNote, PREditableStatusNote } from './note-actions';
 import { BreadcrumbSetter } from '@/components/breadcrumb-setter';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const TimelineStep = ({ title, isActive, isCompleted, children }: { title: string, isActive: boolean, isCompleted: boolean, children?: React.ReactNode }) => {
     return (
@@ -163,6 +164,68 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
     };
     const activeIndex = getActiveIndex();
 
+    // Map logs to their respective steps
+    const logStepMapping = new Map<string, number>();
+    let inferredStep = 0;
+    
+    // Traverse from oldest to newest to reconstruct history
+    [...logs].reverse().forEach(({ log }) => {
+        if (log.action === 'AJUKAN') { inferredStep = 0; logStepMapping.set(log.id, 0); }
+        else if (log.action === 'UPLOAD_GAMBAR') { inferredStep = 1; logStepMapping.set(log.id, 1); }
+        else if (log.action === 'CREATE_RAB') { inferredStep = 2; logStepMapping.set(log.id, 2); }
+        else if (log.action === 'APPROVE_GA_MANAGER') { inferredStep = 3; logStepMapping.set(log.id, 3); }
+        else if (log.action === 'SUBMIT_PR') { inferredStep = 4; logStepMapping.set(log.id, 4); }
+        else if (log.action === 'VERIFIKASI') { inferredStep = 5; logStepMapping.set(log.id, 5); }
+        else if (log.action === 'COMPLETE') { inferredStep = 6; logStepMapping.set(log.id, 6); }
+        else if (log.action === 'UPDATE_FILE' && log.notes) {
+            if (log.notes.includes('suratCabang') || log.notes.includes('Pengajuan')) logStepMapping.set(log.id, 0);
+            else if (log.notes.includes('gambar') || log.notes.includes('Gambar')) logStepMapping.set(log.id, 1);
+            else if (log.notes.includes('rab') || log.notes.includes('Rab')) logStepMapping.set(log.id, 2);
+            else if (log.notes.includes('gaManager') || log.notes.includes('GaManager')) logStepMapping.set(log.id, 3);
+            else if (log.notes.includes('prUrl') || log.notes.includes('keteranganPr')) logStepMapping.set(log.id, 4);
+            else if (log.notes.includes('verifikasi') || log.notes.includes('Verifikasi')) logStepMapping.set(log.id, 5);
+            else if (log.notes.includes('Selesai')) logStepMapping.set(log.id, 6);
+            else logStepMapping.set(log.id, inferredStep);
+        } else if (log.action === 'REVISION' || log.action === 'REJECT') {
+            logStepMapping.set(log.id, Math.min(inferredStep + 1, 6));
+        } else {
+            logStepMapping.set(log.id, inferredStep);
+        }
+    });
+
+    const getActionLabel = (log: typeof approvalLogs.$inferSelect) => {
+        if (log.action === 'UPDATE_FILE') {
+            if (!log.notes) return 'memperbarui data';
+            if (log.notes.includes('suratCabang')) return 'mengubah file Surat Permohonan';
+            if (log.notes.includes('keteranganPengajuan')) return 'mengubah keterangan Pengajuan';
+            if (log.notes.includes('gambarUrl')) return 'mengubah file Gambar/Desain';
+            if (log.notes.includes('keteranganGambar')) return 'mengubah keterangan Gambar';
+            if (log.notes.includes('rabUrl')) return 'mengubah file RAB';
+            if (log.notes.includes('keteranganRab')) return 'mengubah keterangan RAB';
+            if (log.notes.includes('gaManagerApprovalUrl')) return 'mengubah file Approval Manager';
+            if (log.notes.includes('keteranganGaManager')) return 'mengubah keterangan Approval Manager';
+            if (log.notes.includes('prUrl')) return 'mengubah file PR Final';
+            if (log.notes.includes('keteranganPr')) return 'mengubah keterangan PR Final';
+            if (log.notes.includes('verifikasiUrls')) return 'mengubah file Verifikasi';
+            if (log.notes.includes('keteranganVerifikasi')) return 'mengubah keterangan Verifikasi';
+            if (log.notes.includes('keteranganSelesai')) return 'mengubah keterangan Penyelesaian';
+            return 'memperbarui data';
+        }
+
+        const labels: Record<string, string> = {
+            'AJUKAN': 'mengajukan permohonan',
+            'UPLOAD_GAMBAR': 'mengunggah gambar/desain',
+            'CREATE_RAB': 'membuat RAB',
+            'APPROVE_GA_MANAGER': 'menyetujui anggaran',
+            'SUBMIT_PR': 'mengunggah dokumen PR',
+            'VERIFIKASI': 'memverifikasi spesifikasi',
+            'COMPLETE': 'menyelesaikan pengadaan',
+            'REJECT': 'menolak permohonan',
+            'REVISION': 'meminta revisi',
+        };
+        return labels[log.action] || log.action;
+    };
+
     // Determine the most recent reject/revision note
     const exceptionLog = logs.find(l => l.log.action === 'REJECT' || l.log.action === 'REVISION');
     const exceptionNotes = exceptionLog?.log.notes;
@@ -196,8 +259,8 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                 </div>
             )}
 
-            <div className="grid gap-6 md:grid-cols-3">
-                <div className="col-span-2 space-y-6">
+            <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+                <div className="col-span-1 lg:col-span-2 space-y-6">
                     <Card>
                         <CardHeader>
                             <CardTitle>Alur Pengadaan</CardTitle>
@@ -272,7 +335,27 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                 ].map((step) => {
                                     const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
                                     const isActive = activeIndex === step.index && pr.status !== 'COMPLETED';
-                                    
+                                    const stepLogs = logs.filter(({ log }) => logStepMapping.get(log.id) === step.index);
+                                    const isSystemNote = (note: string | null) => {
+                                        if (!note) return true;
+                                        const systemNotes = [
+                                            'Mengajukan permohonan baru',
+                                            'Uploaded drawings/designs',
+                                            'Created RAB with items',
+                                            'GA Manager approved the budget',
+                                            'Cabang uploaded approved PR document',
+                                            'GA Staff verified specifications and items',
+                                            'Procurement process completed',
+                                            'Permohonan ditolak',
+                                            'Revisi diperlukan'
+                                        ];
+                                        return systemNotes.includes(note) || note.startsWith('Updated file') || note.startsWith('Mengubah keterangan:');
+                                    };
+
+                                    const isStepReached = activeIndex >= step.index || pr.status === 'COMPLETED';
+                                    const canEditStep = step.canEdit && pr.status !== 'COMPLETED' && isStepReached;
+                                    const hasNoteValue = step.noteValue && step.noteValue.trim().length > 0;
+
                                     return (
                                         <TimelineStep 
                                             key={step.index}
@@ -280,14 +363,28 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                             isCompleted={isCompleted} 
                                             isActive={isActive}
                                         >
-                                            <div className="mt-2 text-sm space-y-2">
-                                                <PREditableNote 
-                                                    prId={pr.id} 
-                                                    field={step.noteField} 
-                                                    initialValue={step.noteValue ?? null} 
-                                                    canEdit={step.canEdit && pr.status !== 'COMPLETED'} 
-                                                />
-                                                {step.fileRenderer()}
+                                            <div className="mt-3 text-sm space-y-4">
+                                                {/* The main note for this stage (Only show if has content or is editable) */}
+                                                {(hasNoteValue || canEditStep) && (
+                                                    <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm transition-all hover:bg-muted/20">
+                                                        <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                                            <FileText className="h-3 w-3" /> Catatan / Keterangan
+                                                        </h5>
+                                                        <PREditableNote 
+                                                            prId={pr.id} 
+                                                            field={step.noteField} 
+                                                            initialValue={step.noteValue ?? null} 
+                                                            canEdit={canEditStep} 
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {/* Rendered files */}
+                                                {step.hasFile && (
+                                                    <div className="space-y-2">
+                                                        {step.fileRenderer()}
+                                                    </div>
+                                                )}
                                                 
                                                 {/* Approved Badge (only if passed this step and no file was uploaded) */}
                                                 {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.hasFile && step.index !== 6 && (
@@ -303,6 +400,38 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                         notes={exceptionNotes} 
                                                         canEdit={canEditException} 
                                                     />
+                                                )}
+
+                                                {/* Thread Activity Logs */}
+                                                {stepLogs.length > 0 && (
+                                                    <div className="pt-3 pb-1">
+                                                        <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                                                            <History className="h-3 w-3" /> Riwayat Aktivitas
+                                                        </h5>
+                                                        <div className="space-y-5 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/60">
+                                                            {stepLogs.map(({ log, actor }) => {
+                                                                const isSystem = isSystemNote(log.notes);
+                                                                return (
+                                                                    <div key={log.id} className="flex gap-3 items-center relative z-10">
+                                                                        <Avatar className="h-6 w-6 border bg-background ring-4 ring-background">
+                                                                            <AvatarFallback className="text-[9px] font-bold text-primary bg-primary/10">
+                                                                                {(actor?.name || 'U').charAt(0).toUpperCase()}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                                                                            <p className="text-[13px] leading-relaxed text-foreground/90 truncate">
+                                                                                <span className="font-bold">{actor?.name || 'Sistem'}</span>{' '}
+                                                                                <span className="text-muted-foreground">{getActionLabel(log)}</span>
+                                                                            </p>
+                                                                            <span className="text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md whitespace-nowrap shadow-sm">
+                                                                                {new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
                                         </TimelineStep>
@@ -357,37 +486,6 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                             </CardContent>
                         </Card>
                     )}
-                </div>
-
-                <div className="space-y-6">
-                    <Card className="h-fit">
-                        <CardHeader>
-                            <CardTitle>Riwayat Aktivitas</CardTitle>
-                            <CardDescription>Log tindakan pengguna.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {logs.map(({ log, actor }) => (
-                                    <div key={log.id} className="flex gap-4">
-                                        <div className="mt-1">
-                                            <div className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/20" />
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <p className="text-sm font-medium leading-none">
-                                                {log.action} oleh {actor?.name || actor?.username}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {log.notes}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {new Date(log.createdAt).toLocaleString('id-ID')}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </div>
