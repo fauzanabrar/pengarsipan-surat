@@ -249,7 +249,9 @@ export default async function PRQueuePage({
                                     <TableRow key={pr.id} className="group transition-colors hover:bg-muted/40 border-b border-black/15 dark:border-white/10 last:border-0">
                                         <TableCell className="pl-4 py-3">
                                             <div className="flex flex-col gap-0.5 overflow-hidden">
-                                                <span className="font-bold text-[14px] group-hover:text-primary transition-colors line-clamp-1">{pr.title}</span>
+                                                <Link href={`/dashboard/pr/${pr.id}`} className="font-bold text-[14px] group-hover:text-primary hover:underline transition-colors line-clamp-1">
+                                                    {pr.title}
+                                                </Link>
                                                 <span className="text-[10px] font-medium text-muted-foreground tracking-tight">ID: {pr.id.split('-')[0].toUpperCase()}</span>
                                             </div>
                                         </TableCell>
