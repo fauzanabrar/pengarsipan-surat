@@ -24,6 +24,12 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TablePagination, TableSortHeader } from '@/components/common/table-controls';
 import { asc } from 'drizzle-orm';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const dynamic = 'force-dynamic';
 
@@ -189,22 +195,22 @@ export default async function PRQueuePage({
                 <Table>
                     <TableHeader className="bg-muted/30 border-t border-black/15 dark:border-white/10">
                         <TableRow className="hover:bg-transparent border-b border-black/15 dark:border-white/10">
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground pl-4 min-w-[180px]">
+                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground pl-4 min-w-[120px]">
                                 <TableSortHeader label="Judul" field="title" currentSort={sort} currentOrder={order} icon={<FileText className="h-3.5 w-3.5" />} />
                             </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[140px]">
+                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[120px]">
                                 <TableSortHeader label="Pemohon" field="name" currentSort={sort} currentOrder={order} icon={<User className="h-3.5 w-3.5" />} />
                             </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[110px]">
+                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[100px] hidden md:table-cell">
                                 <TableSortHeader label="Cabang" field="location" currentSort={sort} currentOrder={order} icon={<MapPin className="h-3.5 w-3.5" />} />
                             </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[130px]">
+                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[90px]">
                                 <TableSortHeader label="Status" field="status" currentSort={sort} currentOrder={order} />
                             </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[140px]">
+                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[120px] hidden lg:table-cell">
                                 <TableSortHeader label="Waktu" field="createdAt" currentSort={sort} currentOrder={order} icon={<Clock className="h-3.5 w-3.5" />} />
                             </TableHead>
-                            <TableHead className="h-11 pr-4 w-[70px]"></TableHead>
+                            <TableHead className="h-11 pr-4 w-[60px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -227,30 +233,56 @@ export default async function PRQueuePage({
 
                                 return (
                                     <TableRow key={pr.id} className="group transition-colors hover:bg-muted/40 border-b border-black/15 dark:border-white/10 last:border-0">
-                                        <TableCell className="pl-4 py-3">
-                                            <div className="flex flex-col gap-0.5 overflow-hidden">
-                                                <Link href={`/dashboard/pr/${pr.id}`} className="font-bold text-[14px] group-hover:text-primary hover:underline transition-colors line-clamp-1">
-                                                    {pr.title}
-                                                </Link>
-                                                <span className="text-[10px] font-medium text-muted-foreground tracking-tight">ID: {pr.id.split('-')[0].toUpperCase()}</span>
-                                            </div>
+                                        <TableCell className="pl-4 py-3 max-w-[200px]">
+                                            <TooltipProvider delayDuration={300}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="flex flex-col gap-0.5 overflow-hidden cursor-help">
+                                                            <Link href={`/dashboard/pr/${pr.id}`} className="font-bold text-[14px] group-hover:text-primary hover:underline transition-colors whitespace-normal break-words leading-tight">
+                                                                {pr.title}
+                                                            </Link>
+                                                            <span className="text-[10px] font-medium text-muted-foreground tracking-tight">ID: {pr.id.split('-')[0].toUpperCase()}</span>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="right" className="max-w-[300px]">
+                                                        <div className="space-y-1">
+                                                            <p className="font-bold">{pr.title}</p>
+                                                            <p className="text-[10px] opacity-70">ID: {pr.id}</p>
+                                                            {pr.keteranganPengajuan && (
+                                                                <p className="text-[11px] border-t pt-1 mt-1 italic">{pr.keteranganPengajuan}</p>
+                                                            )}
+                                                        </div>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         </TableCell>
-                                        <TableCell className="py-3">
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="h-8 w-8 border-2 border-primary/10 shadow-sm shrink-0">
-                                                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary font-bold text-[10px]">
-                                                        {(requester?.name || 'U').charAt(0).toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex flex-col overflow-hidden">
-                                                    <span className="font-bold text-[13px] truncate leading-tight">{requester?.name || 'User'}</span>
-                                                    <span className="text-[10px] text-muted-foreground truncate">@{requester?.username}</span>
-                                                </div>
-                                            </div>
+                                        <TableCell className="py-3 max-w-[180px]">
+                                            <TooltipProvider delayDuration={300}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="flex items-center gap-2 cursor-help">
+                                                            <Avatar className="h-8 w-8 border-2 border-primary/10 shadow-sm shrink-0">
+                                                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary font-bold text-[10px]">
+                                                                    {(requester?.name || 'U').charAt(0).toUpperCase()}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex flex-col overflow-hidden">
+                                                                <span className="font-bold text-[13px] whitespace-normal break-words leading-tight">{requester?.name || 'User'}</span>
+                                                                <span className="text-[10px] text-muted-foreground truncate">@{requester?.username}</span>
+                                                            </div>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="right">
+                                                        <p className="font-bold">{requester?.name}</p>
+                                                        <p className="text-[10px]">@{requester?.username}</p>
+                                                        <p className="text-[10px] opacity-70 capitalize">{requester?.role} - {requester?.location || 'Head Office'}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         </TableCell>
-                                        <TableCell className="py-3">
+                                        <TableCell className="py-3 hidden md:table-cell">
                                             <div className="flex items-center">
-                                                <span className="px-2 py-0.5 rounded-full bg-muted/50 border text-[11px] font-medium text-muted-foreground">
+                                                <span className="px-2 py-0.5 rounded-full bg-muted/50 border text-[11px] font-medium text-muted-foreground whitespace-nowrap">
                                                     {requester?.location || (requester?.role === 'GA_STAFF' ? 'Head Office' : (requester?.username === 'cabang' ? 'Utama' : (requester?.username || '-')))}
                                                 </span>
                                             </div>
@@ -258,14 +290,14 @@ export default async function PRQueuePage({
                                         <TableCell className="py-3 scale-[0.9] origin-left">
                                             <PRStatusBadge status={pr.status} />
                                         </TableCell>
-                                        <TableCell className="py-3">
+                                        <TableCell className="py-3 hidden lg:table-cell">
                                             <div className="flex items-start gap-2">
                                                 <div className="mt-0.5 p-0.5 bg-muted rounded-sm shrink-0">
                                                     <Clock className="h-3 w-3 text-muted-foreground" />
                                                 </div>
                                                 <div className="flex flex-col gap-0">
                                                     <span className="text-[12px] font-bold text-foreground/80 leading-none">{dateStr}</span>
-                                                    <span className="text-[10px] font-medium text-muted-foreground">{timeStr}</span>
+                                                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{timeStr}</span>
                                                 </div>
                                             </div>
                                         </TableCell>
