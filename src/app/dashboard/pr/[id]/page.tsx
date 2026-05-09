@@ -13,10 +13,11 @@ import { PRFileActions } from './file-actions';
 import { PREditableNote, PREditableStatusNote } from './note-actions';
 import { BreadcrumbSetter } from '@/components/breadcrumb-setter';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ScrollToActive } from './scroll-to-active';
 
-const TimelineStep = ({ title, isActive, isCompleted, children }: { title: string, isActive: boolean, isCompleted: boolean, children?: React.ReactNode }) => {
+const TimelineStep = ({ id, title, isActive, isCompleted, children }: { id?: string, title: string, isActive: boolean, isCompleted: boolean, children?: React.ReactNode }) => {
     return (
-        <div className="flex gap-4 relative pb-8 last:pb-0">
+        <div id={id} className="flex gap-4 relative pb-8 last:pb-0 scroll-mt-20">
             <div className="flex flex-col items-center">
                 <div className="z-10 bg-background">
                     {isCompleted ? (
@@ -244,6 +245,19 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
         { title: "7. Selesai / Pengadaan", index: 6, noteField: "keteranganSelesai" as const, noteValue: pr.keteranganSelesai, canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER', fileRenderer: () => null, hasFile: true }
     ];
 
+    const getWaitingMessage = (status: string) => {
+        const messages: Record<string, string> = {
+            'PENDING_GAMBAR': 'GA Staff sedang menyiapkan gambar dan desain perencanaan.',
+            'PENDING_RAB': 'GA Staff sedang menyusun Rencana Anggaran Biaya (RAB).',
+            'PENDING_GA_MANAGER': 'Menunggu tinjauan dan persetujuan dari GA Manager.',
+            'PENDING_CABANG_PR': 'Cabang sedang menyiapkan dan mengunggah dokumen PR Final.',
+            'PENDING_VERIFIKASI': 'GA Staff sedang memverifikasi spesifikasi dan kelengkapan dokumen.',
+            'PENDING_PENGADAAN': 'GA Staff sedang memproses penyelesaian akhir pengadaan.',
+            'REVISION': 'Pengaju sedang melakukan revisi atau perbaikan dokumen.',
+        };
+        return messages[status] || 'Proses sedang berjalan ke tahap berikutnya.';
+    };
+
     return (
         <div className="flex-1 space-y-6 p-8 pt-6 max-w-5xl mx-auto">
             <BreadcrumbSetter title={pr.title} />
@@ -257,15 +271,8 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <PRStatusBadge status={pr.status} />
             </div>
-            {isPending && (
-                <div className="flex flex-col sm:flex-row bg-primary/5 p-4 rounded-lg border border-primary/20 sm:items-center justify-between gap-4">
-                    <div>
-                        <h4 className="font-semibold text-sm text-primary">Tindakan Diperlukan</h4>
-                        <p className="text-xs text-muted-foreground">Status saat ini: {pr.status.replace(/_/g, ' ')}.</p>
-                    </div>
-                    <PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role as any} isOwner={pr.requesterId === session.user.id} />
-                </div>
-            )}
+            <ScrollToActive activeIndex={activeIndex} />
+
             <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
                 <div className="col-span-1 lg:col-span-2 space-y-6">
                     <Card>
@@ -285,8 +292,60 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                         return step.index === 5 && mappedIdx === 4 ? logIsRevisionFix.get(log.id) : mappedIdx === step.index;
                                     });
                                     return (
-                                        <TimelineStep key={step.index} title={step.title} isCompleted={isCompleted} isActive={isActive}>
+                                        <TimelineStep 
+                                            key={step.index} 
+                                            id={`step-${step.index}`}
+                                            title={step.title} 
+                                            isCompleted={isCompleted} 
+                                            isActive={isActive}
+                                        >
                                             <div className="mt-3 text-sm space-y-4">
+                                                {/* Action Buttons or Waiting Message (Inline) */}
+                                                {isActive && (() => {
+                                                    const canAction = (
+                                                        (session.user.role === 'GA_STAFF' && ['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_VERIFIKASI', 'PENDING_PENGADAAN'].includes(pr.status)) ||
+                                                        (session.user.role === 'GA_MANAGER' && pr.status === 'PENDING_GA_MANAGER') ||
+                                                        (pr.requesterId === session.user.id && (pr.status === 'PENDING_CABANG_PR' || pr.status === 'REVISION'))
+                                                    );
+
+                                                    return (
+                                                        <div className={`p-4 rounded-lg border transition-all duration-300 ${
+                                                            canAction 
+                                                            ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 shadow-sm animate-in fade-in slide-in-from-top-1' 
+                                                            : 'bg-muted/20 border-dashed border-muted-foreground/20'
+                                                        }`}>
+                                                            <div className="w-full mb-2">
+                                                                <h5 className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${
+                                                                    canAction ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'
+                                                                }`}>
+                                                                    {canAction ? (
+                                                                        <><AlertCircle className="h-3 w-3" /> Tindakan Diperlukan</>
+                                                                    ) : (
+                                                                        <><Clock className="h-3 w-3" /> Status</>
+                                                                    )}
+                                                                </h5>
+                                                            </div>
+                                                            {canAction ? (
+                                                                <div className="flex flex-wrap items-center gap-3">
+                                                                    <PRActionButtons 
+                                                                        prId={pr.id} 
+                                                                        status={pr.status} 
+                                                                        userRole={session.user.role as any} 
+                                                                        isOwner={pr.requesterId === session.user.id} 
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                                    <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-pulse" />
+                                                                    <p className="text-sm italic">
+                                                                        {getWaitingMessage(pr.status)}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+
                                                 {(step.noteValue || canEditStep) && !( (pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === step.index && exceptionLog) && (
                                                     <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm">
                                                         <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Catatan / Keterangan</h5>
