@@ -212,7 +212,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                             prId={pr.id} field="keteranganPengajuan" initialValue={pr.keteranganPengajuan ?? null} 
                                             canEdit={(pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
                                         />
-                                        {renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', session.user.role === 'CABANG' || session.user.role === 'GA_MANAGER')}
+                                        {renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', (pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'))}
                                         {(activeIndex > 0 || pr.status === 'COMPLETED') && !pr.suratCabangUrl && <ApprovedBadge />}
                                         {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 0 && exceptionLogId && (
                                             <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
@@ -230,7 +230,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                             prId={pr.id} field="keteranganGambar" initialValue={pr.keteranganGambar ?? null} 
                                             canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
                                         />
-                                        {renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan', 'gambarUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER')}
+                                        {renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan', 'gambarUrl', (session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'))}
                                         {(activeIndex > 1 || pr.status === 'COMPLETED') && !pr.gambarUrl && <ApprovedBadge />}
                                         {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 1 && exceptionLogId && (
                                             <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
@@ -248,7 +248,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                             prId={pr.id} field="keteranganRab" initialValue={pr.keteranganRab ?? null} 
                                             canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
                                         />
-                                        {renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)', 'rabUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER')}
+                                        {renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)', 'rabUrl', (session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'))}
                                         {(activeIndex > 2 || pr.status === 'COMPLETED') && !pr.rabUrl && <ApprovedBadge />}
                                         {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 2 && exceptionLogId && (
                                             <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
@@ -284,7 +284,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                             prId={pr.id} field="keteranganPr" initialValue={pr.keteranganPr ?? null} 
                                             canEdit={(pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
                                         />
-                                        {renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final', 'prUrl', session.user.role === 'CABANG' || session.user.role === 'GA_MANAGER')}
+                                        {renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final', 'prUrl', (pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'))}
                                         {(activeIndex > 4 || pr.status === 'COMPLETED') && !pr.prUrl && <ApprovedBadge />}
                                         {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 4 && exceptionLogId && (
                                             <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />

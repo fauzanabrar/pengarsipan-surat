@@ -73,24 +73,26 @@ export function PRFileActions({ prId, field, canEdit, canDelete = false }: PRFil
     };
 
     return (
-        <div className="flex items-center gap-1 opacity-0 group-hover/file:opacity-100 transition-opacity">
+        <div className="flex items-center gap-2">
             <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                variant="secondary" 
+                size="sm" 
+                className="gap-2 shrink-0"
                 onClick={() => setShowEdit(true)}
                 disabled={isLoading}
             >
+                <span className="hidden sm:inline">Ubah</span>
                 <Edit className="h-4 w-4" />
             </Button>
             {canDelete && (
                 <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    variant="secondary" 
+                    size="sm" 
+                    className="gap-2 shrink-0 text-destructive hover:text-destructive"
                     onClick={() => setShowDelete(true)}
                     disabled={isLoading}
                 >
+                    <span className="hidden sm:inline">Hapus</span>
                     <Trash2 className="h-4 w-4" />
                 </Button>
             )}

@@ -31,7 +31,7 @@ export function PREditableNote({ prId, field, initialValue, canEdit }: PRNoteAct
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover/note:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 h-7 w-7 transition-opacity"
                         onClick={() => setIsEditing(true)}
                     >
                         <Edit className="h-3.5 w-3.5" />
@@ -97,7 +97,7 @@ export function PREditableStatusNote({ prId, logId, initialValue, canEdit }: PRS
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute -top-1 right-1 h-6 w-6 opacity-0 group-hover/note:opacity-100 transition-opacity"
+                        className="absolute -top-1 right-1 h-6 w-6 transition-opacity"
                         onClick={() => setIsEditing(true)}
                     >
                         <Edit className="h-3 w-3" />
