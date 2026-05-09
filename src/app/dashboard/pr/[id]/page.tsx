@@ -221,7 +221,9 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
     logs.forEach(({ log }, idx) => {
         const stepIdx = logStepMapping.get(log.id)!;
-        if (log.action !== 'REVISION' && log.action !== 'REJECT') {
+        const isApproverAction = ['VERIFIKASI', 'APPROVE_GA_MANAGER', 'COMPLETE'].includes(log.action);
+        
+        if (log.action !== 'REVISION' && log.action !== 'REJECT' && !isApproverAction) {
             const hasPastRevisionInStep = logs.slice(idx + 1).some(l => logStepMapping.get(l.log.id) === stepIdx && (l.log.action === 'REVISION' || l.log.action === 'REJECT'));
             const hasPastRevisionInNextStep = logs.slice(idx + 1).some(l => logStepMapping.get(l.log.id) === stepIdx + 1 && (l.log.action === 'REVISION' || l.log.action === 'REJECT'));
             if (hasPastRevisionInStep || hasPastRevisionInNextStep) logIsRevisionFix.set(log.id, true);
