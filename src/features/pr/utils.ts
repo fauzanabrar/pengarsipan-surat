@@ -18,28 +18,35 @@ export function getVisibilityConditions(userId: string, userRole: string): SQL {
  * Returns conditions for the "Action Required" (Todo) queue.
  */
 export function getActionRequiredConditions(userId: string, userRole: string): SQL {
+    const requesterNeedsAction = and(
+        eq(purchaseRequests.requesterId, userId),
+        or(
+            eq(purchaseRequests.status, 'PENDING_CABANG_PR'),
+            eq(purchaseRequests.status, 'REVISION')
+        )
+    );
+
     if (userRole === 'GA_STAFF') {
-        return inArray(purchaseRequests.status, [
-            'PENDING_GAMBAR',
-            'PENDING_RAB',
-            'PENDING_VERIFIKASI',
-            'PENDING_PENGADAAN'
-        ]) as SQL;
+        return or(
+            requesterNeedsAction,
+            inArray(purchaseRequests.status, [
+                'PENDING_GAMBAR',
+                'PENDING_RAB',
+                'PENDING_VERIFIKASI',
+                'PENDING_PENGADAAN'
+            ])
+        ) as SQL;
     }
     
     if (userRole === 'GA_MANAGER') {
-        return eq(purchaseRequests.status, 'PENDING_GA_MANAGER');
+        return or(
+            requesterNeedsAction,
+            eq(purchaseRequests.status, 'PENDING_GA_MANAGER')
+        ) as SQL;
     }
 
     if (userRole === 'CABANG') {
-        // CABANG needs to action PENDING_CABANG_PR and REVISION
-        return and(
-            eq(purchaseRequests.requesterId, userId),
-            or(
-                eq(purchaseRequests.status, 'PENDING_CABANG_PR'),
-                eq(purchaseRequests.status, 'REVISION')
-            )
-        ) as SQL;
+        return requesterNeedsAction as SQL;
     }
 
     return undefined as unknown as SQL;

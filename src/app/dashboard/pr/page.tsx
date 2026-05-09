@@ -67,11 +67,10 @@ export default async function PRQueuePage({
     const whereFilters: (SQL | undefined)[] = [];
     if (view === 'mine') {
         whereFilters.push(ownRequests);
-    } else if (userRole === 'GA_STAFF' && view === 'todo') {
-        whereFilters.push(actionRequired ? or(ownRequests, actionRequired) : ownRequests);
+    } else if (view === 'todo') {
+        if (actionRequired) whereFilters.push(actionRequired);
     } else {
         if (visibility) whereFilters.push(visibility);
-        if (view === 'todo' && actionRequired) whereFilters.push(actionRequired);
     }
 
     if (query) {
@@ -87,17 +86,12 @@ export default async function PRQueuePage({
     }
 
     // 2. Count Filters (for the "Perlu Diproses" badge, always acts like view='todo')
-    const countFilters: SQL[] = [];
-    if (userRole === 'GA_STAFF') {
-        countFilters.push((actionRequired ? or(ownRequests, actionRequired) : ownRequests) as SQL);
-    } else {
-        if (visibility) countFilters.push(visibility);
-        if (actionRequired) countFilters.push(actionRequired);
-    }
+    const countFilters: (SQL | undefined)[] = [];
+    if (actionRequired) countFilters.push(actionRequired);
 
     const [todoCountResult] = await db.select({ total: count() })
         .from(purchaseRequests)
-        .where(and(...countFilters));
+        .where(and(...countFilters.filter((f): f is SQL => !!f)));
     
     const todoCount = todoCountResult.total;
 
