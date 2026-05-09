@@ -45,17 +45,18 @@ export default async function Dashboard() {
         lt(purchaseRequests.createdAt, startOfThisMonth)
     ));
 
-    // Handle dummy data for MoM comparison if last month is empty
+    // Handle strictly real data for MoM comparison
     const thisMonthCount = Number(thisMonthStats.count || 0);
     const thisMonthDone = Number(thisMonthStats.doneCount || 0);
     const thisMonthPending = Number(thisMonthStats.pendingCount || 0);
     const thisMonthRejected = Number(thisMonthStats.rejectedCount || 0);
-    const lastMonthCount = Number(lastMonthStats.count || 0) || Math.floor(thisMonthCount * 0.8) || 5; // Dummy 80% if 0, min 5
+    
+    const lastMonthCount = Number(lastMonthStats.count || 0);
     const countDiff = thisMonthCount - lastMonthCount;
     const countPct = lastMonthCount > 0 ? (countDiff / lastMonthCount) * 100 : 0;
 
     const thisMonthTotal = Number(thisMonthStats.total || 0);
-    const lastMonthTotal = Number(lastMonthStats.total || 0) || Math.floor(thisMonthTotal * 0.7) || 15000000; // Dummy 70% if 0, min 15jt
+    const lastMonthTotal = Number(lastMonthStats.total || 0);
     const totalDiff = thisMonthTotal - lastMonthTotal;
     const totalPct = lastMonthTotal > 0 ? (totalDiff / lastMonthTotal) * 100 : 0;
 
@@ -79,7 +80,7 @@ export default async function Dashboard() {
     ));
 
     const thisMonthDoneBudget = Number(spendingStats.done || 0);
-    const lastMonthDoneBudget = Number(lastMonthDoneStats.done || 0) || Math.floor(thisMonthDoneBudget * 0.9) || 12000000;
+    const lastMonthDoneBudget = Number(lastMonthDoneStats.done || 0);
     const budgetDoneDiff = thisMonthDoneBudget - lastMonthDoneBudget;
     const budgetDonePct = lastMonthDoneBudget > 0 ? (budgetDoneDiff / lastMonthDoneBudget) * 100 : 0;
 
