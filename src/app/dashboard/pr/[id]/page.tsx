@@ -140,24 +140,25 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
     // Calculate active stage index based on current status
     const getActiveIndex = (): number => {
-        switch (pr.status) {
-            case 'PENDING_GAMBAR': return 1;
-            case 'PENDING_RAB': return 2;
-            case 'PENDING_GA_MANAGER': return 3;
-            case 'PENDING_CABANG_PR': return 4;
-            case 'PENDING_VERIFIKASI': return 5;
-            case 'PENDING_PENGADAAN': return 6;
-            case 'COMPLETED': return 7;
-            case 'REJECTED':
-            case 'REVISION':
-                if (pr.verifikasiUrls || pr.keteranganVerifikasi) return 6;
-                if (pr.prUrl || pr.keteranganPr) return 5;
-                if (pr.gaManagerApprovalUrl || pr.keteranganGaManager) return 4;
-                if (pr.rabUrl || pr.keteranganRab) return 3;
-                if (pr.gambarUrl || pr.keteranganGambar) return 2;
-                return 1;
-            default: return 1;
-        }
+        const statusMap: Record<string, number> = {
+            'PENDING_GAMBAR': 1,
+            'PENDING_RAB': 2,
+            'PENDING_GA_MANAGER': 3,
+            'PENDING_CABANG_PR': 4,
+            'PENDING_VERIFIKASI': 5,
+            'PENDING_PENGADAAN': 6,
+            'COMPLETED': 7,
+        };
+
+        if (statusMap[pr.status]) return statusMap[pr.status];
+
+        // Handle REJECTED/REVISION (return index based on furthest completed field)
+        if (pr.verifikasiUrls || pr.keteranganVerifikasi) return 6;
+        if (pr.prUrl || pr.keteranganPr) return 5;
+        if (pr.gaManagerApprovalUrl || pr.keteranganGaManager) return 4;
+        if (pr.rabUrl || pr.keteranganRab) return 3;
+        if (pr.gambarUrl || pr.keteranganGambar) return 2;
+        return 1;
     };
     const activeIndex = getActiveIndex();
 

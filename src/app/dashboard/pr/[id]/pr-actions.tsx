@@ -134,16 +134,14 @@ export function PRActionButtons({ prId, status, userRole, isOwner }: PRActionBut
             if (!['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_GA_MANAGER'].includes(status)) {
                 actions.push({ label: 'Minta Revisi', onClick: () => setShowRevision(true), variant: 'outline' });
             }
+            
             // Tolak is NOT available for Gambar or RAB stages
             // Also, during GA Manager Approval and PR Upload stages, only the GA_MANAGER can reject
-            if (!['PENDING_GAMBAR', 'PENDING_RAB'].includes(status)) {
-                if (['PENDING_GA_MANAGER', 'PENDING_CABANG_PR'].includes(status)) {
-                    if (userRole === 'GA_MANAGER') {
-                        actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive' });
-                    }
-                } else {
-                    actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive' });
-                }
+            const isRestrictedStage = ['PENDING_GA_MANAGER', 'PENDING_CABANG_PR'].includes(status);
+            const canTolak = !['PENDING_GAMBAR', 'PENDING_RAB'].includes(status) && (!isRestrictedStage || userRole === 'GA_MANAGER');
+            
+            if (canTolak) {
+                actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive' });
             }
         }
 
