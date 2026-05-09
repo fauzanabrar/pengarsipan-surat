@@ -22,6 +22,8 @@ import { SQL } from 'drizzle-orm';
 import { CardedTable } from '@/components/common/carded-table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TablePagination, TableSortHeader } from '@/components/common/table-controls';
+import { asc } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +52,11 @@ export default async function PRQueuePage({
 
     const v = resolvedSearchParams.view;
     const view = typeof v === 'string' ? v : 'all'; // 'todo' or 'all'
+
+    const page = Number(resolvedSearchParams.page) || 1;
+    const pageSize = 10;
+    const sort = typeof resolvedSearchParams.sort === 'string' ? resolvedSearchParams.sort : 'createdAt';
+    const order = typeof resolvedSearchParams.order === 'string' ? resolvedSearchParams.order as 'asc' | 'desc' : 'desc';
 
     // Determine conditions based on view
     const visibility = getVisibilityConditions(userId, userRole);
@@ -88,15 +95,6 @@ export default async function PRQueuePage({
         whereFilters.push(eq(purchaseRequests.status, statusFilter as any));
     }
 
-    const prs = await db.select({
-        pr: purchaseRequests,
-        requester: users,
-    })
-        .from(purchaseRequests)
-        .leftJoin(users, eq(purchaseRequests.requesterId, users.id))
-        .where(and(...whereFilters))
-        .orderBy(desc(purchaseRequests.createdAt));
-
     // Count for badge (only for "todo" view)
     const countFilters: SQL[] = [];
     if (userRole === 'GA_STAFF') {
@@ -116,6 +114,37 @@ export default async function PRQueuePage({
         .where(and(...countFilters));
     
     const todoCount = todoCountResult.total;
+
+    // Total count for current filters (for pagination)
+    const [totalCountResult] = await db.select({ total: count() })
+        .from(purchaseRequests)
+        .leftJoin(users, eq(purchaseRequests.requesterId, users.id))
+        .where(and(...whereFilters));
+    
+    const totalItems = totalCountResult.total;
+
+    // Determine order
+    const sortFieldMap: Record<string, any> = {
+        title: purchaseRequests.title,
+        name: users.name,
+        location: users.location,
+        status: purchaseRequests.status,
+        createdAt: purchaseRequests.createdAt,
+    };
+
+    const sortField = sortFieldMap[sort] || purchaseRequests.createdAt;
+    const orderFn = order === 'asc' ? asc : desc;
+
+    const prs = await db.select({
+        pr: purchaseRequests,
+        requester: users,
+    })
+        .from(purchaseRequests)
+        .leftJoin(users, eq(purchaseRequests.requesterId, users.id))
+        .where(and(...whereFilters))
+        .orderBy(orderFn(sortField))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
 
     const getLinkWithParams = (newView: string) => {
         const params = new URLSearchParams();
@@ -174,17 +203,19 @@ export default async function PRQueuePage({
                     <TableHeader className="bg-muted/30 border-t border-black/15 dark:border-white/10">
                         <TableRow className="hover:bg-transparent border-b border-black/15 dark:border-white/10">
                             <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground pl-4 min-w-[180px]">
-                                <div className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> Judul</div>
+                                <TableSortHeader label="Judul" field="title" currentSort={sort} currentOrder={order} icon={<FileText className="h-3.5 w-3.5" />} />
                             </TableHead>
                             <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[140px]">
-                                <div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Pengaju</div>
+                                <TableSortHeader label="Pengaju" field="name" currentSort={sort} currentOrder={order} icon={<User className="h-3.5 w-3.5" />} />
                             </TableHead>
                             <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[110px]">
-                                <div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Cabang</div>
+                                <TableSortHeader label="Cabang" field="location" currentSort={sort} currentOrder={order} icon={<MapPin className="h-3.5 w-3.5" />} />
                             </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[130px]">Status</TableHead>
+                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[130px]">
+                                <TableSortHeader label="Status" field="status" currentSort={sort} currentOrder={order} />
+                            </TableHead>
                             <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[140px]">
-                                <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Waktu</div>
+                                <TableSortHeader label="Waktu" field="createdAt" currentSort={sort} currentOrder={order} icon={<Clock className="h-3.5 w-3.5" />} />
                             </TableHead>
                             <TableHead className="h-11 pr-4 w-[70px]"></TableHead>
                         </TableRow>
@@ -264,6 +295,10 @@ export default async function PRQueuePage({
                     </TableBody>
                 </Table>
             </CardedTable>
+
+            <div className="px-2 pb-8">
+                <TablePagination totalItems={totalItems} pageSize={pageSize} currentPage={page} />
+            </div>
         </div>
     );
 }

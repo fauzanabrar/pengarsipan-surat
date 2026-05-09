@@ -6,6 +6,7 @@ interface CardedTableProps {
     title?: string
     description?: string
     headerContent?: ReactNode
+    footerContent?: ReactNode
     children: ReactNode
     className?: string
     contentClassName?: string
@@ -16,14 +17,15 @@ export function CardedTable({
     title,
     description,
     headerContent,
+    footerContent,
     children,
     className,
     contentClassName,
 }: CardedTableProps) {
     return (
-        <Card className={cn("border-none shadow-md ring-1 ring-black/15 dark:ring-white/10 gap-0 py-0", className)}>
+        <Card className={cn("border-none shadow-md ring-1 ring-black/15 dark:ring-white/10 gap-0 py-0 overflow-hidden", className)}>
             {(title || description || headerContent) && (
-                <CardHeader className="px-4 pt-3 pb-4">
+                <CardHeader className="px-4 pt-3 pb-4 border-b border-black/5 dark:border-white/5">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                         {(title || description) && (
                             <div className="space-y-1 text-start">
@@ -42,6 +44,11 @@ export function CardedTable({
             <CardContent className={cn("p-0", contentClassName)}>
                 <div className="overflow-x-auto">{children}</div>
             </CardContent>
+            {footerContent && (
+                <div className="px-4 py-3 border-t border-black/5 dark:border-white/5 bg-muted/20">
+                    {footerContent}
+                </div>
+            )}
         </Card>
     )
 }
