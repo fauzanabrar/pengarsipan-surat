@@ -8,7 +8,7 @@ import { PRActionButtons } from './pr-actions';
 import { PRStatusBadge } from '@/features/pr/components/status-badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ExternalLink, FileText, CheckCircle2, Circle, Clock, ReceiptText, AlertCircle, History } from 'lucide-react';
+import { ExternalLink, FileText, CheckCircle2, Circle, Clock, ReceiptText, AlertCircle, History, User, MapPin, CalendarDays } from 'lucide-react';
 import { PRFileActions } from './file-actions';
 import { PREditableNote, PREditableStatusNote } from './note-actions';
 import { BreadcrumbSetter } from '@/components/breadcrumb-setter';
@@ -219,96 +219,174 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
             <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
                 <div className="col-span-1 lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader><CardTitle>Alur Pengadaan</CardTitle><CardDescription>Lacak tahapan dokumen pengadaan ini.</CardDescription></CardHeader>
-                        <CardContent className="pt-4"><div className="pl-2">
-                            {WORKFLOW_STEP_CONFIG.map((step) => {
-                                const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
-                                const isActive = activeIndex === step.index && pr.status !== 'COMPLETED';
-                                const isStepReached = activeIndex >= step.index || pr.status === 'COMPLETED';
-                                const stepValue = (pr as any)[step.noteField];
-                                const canEditStep = (step.index === 0 || step.index === 4) 
-                                    ? (pr.requesterId === session.user.id || (session.user.role as string) === 'GA_MANAGER')
-                                    : ((session.user.role as string) === 'GA_STAFF' || (session.user.role as string) === 'GA_MANAGER');
-                                const canEditThisNow = canEditStep && pr.status !== 'COMPLETED' && isStepReached;
-                                const stepLogs = logs.filter(({ log }) => {
-                                    const mappedIdx = logStepMapping.get(log.id);
-                                    return step.index === 5 && mappedIdx === 4 ? logIsRevisionFix.get(log.id) : mappedIdx === step.index;
-                                });
-
-                                return (
-                                    <TimelineStep key={step.index} id={`step-${step.index}`} title={step.title} isCompleted={isCompleted} isActive={isActive}>
-                                        <div className="mt-3 text-sm space-y-4">
-                                            {isActive && (
-                                                <div className={`p-4 rounded-lg border transition-all duration-300 ${canActionAtActiveStep ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 shadow-sm' : 'bg-muted/20 border-dashed border-muted-foreground/20'}`}>
-                                                    <div className="w-full mb-2"><h5 className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${canActionAtActiveStep ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{canActionAtActiveStep ? <><AlertCircle className="h-3 w-3" /> Tindakan Diperlukan</> : <><Clock className="h-3 w-3" /> Status</>}</h5></div>
-                                                    {canActionAtActiveStep ? (
-                                                        <div className="flex flex-wrap items-center gap-3"><PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role as any} isOwner={pr.requesterId === session.user.id} /></div>
-                                                    ) : (
-                                                        <div className="flex items-center gap-2 text-muted-foreground"><div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-pulse" /><p className="text-sm italic">{WAITING_MESSAGES[pr.status] || 'Proses sedang berjalan ke tahap berikutnya.'}</p></div>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {(stepValue || canEditThisNow) && !( (pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog) && (
-                                                <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm">
-                                                    <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Catatan / Keterangan</h5>
-                                                    <PREditableNote prId={pr.id} field={step.noteField} initialValue={stepValue ?? null} canEdit={canEditThisNow} />
-                                                </div>
-                                            )}
-                                            {step.fileField && (step.isMulti ? (pr as any)[step.fileField]?.split(',').filter(Boolean).map((u: string, i: number) => renderFile(u, `${step.fileLabel} ${i+1}`, step.fileField, canEditThisNow, true, `f-${step.index}-${i}`)) : renderFile((pr as any)[step.fileField], step.fileLabel, step.fileField, canEditThisNow))}
-                                            {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.fileField && !step.isFinal && <ApprovedBadge />}
-                                            {(pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog && (
-                                                <StatusBadge prId={pr.id} logId={exceptionLog.log.id} status={pr.status as any} notes={exceptionLog.log.notes} canEdit={exceptionLog.log.actorId === session.user.id || session.user.role === 'GA_MANAGER'} />
-                                            )}
-                                            {stepLogs.length > 0 && (
-                                                <div className="pt-3 pb-1">
-                                                    <div className="flex items-center justify-between mb-4"><h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Riwayat Aktivitas</h5></div>
-                                                    <div className="space-y-5 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/60">
-                                                        {stepLogs.map(({ log, actor }) => {
-                                                            const isRevisionFix = logIsRevisionFix.get(log.id) || (step.index === 5 && logStepMapping.get(log.id) === 4);
-                                                            return (
-                                                                <div key={log.id} className="flex gap-3 items-center relative z-10">
-                                                                    <Avatar className="h-6 w-6 border bg-background ring-4 ring-background"><AvatarFallback className="text-[9px] font-bold text-primary bg-primary/10">{(actor?.name || 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                                                                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                                                                        <div className="flex items-center gap-2 truncate">
-                                                                            <p className="text-[13px] leading-relaxed text-foreground/90 truncate"><span className="font-bold">{actor?.name || 'Sistem'}</span> <span className="text-muted-foreground">{isRevisionFix ? 'telah merevisi dokumen' : getActionLabel(log)}</span></p>
-                                                                            {isRevisionFix && step.index !== 4 && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-sm shrink-0"><History className="h-2.5 w-2.5" /> Direvisi</span>}
-                                                                        </div>
-                                                                        <span className="text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md">{new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TimelineStep>
-                                );
-                            })}
-                        </div></CardContent>
-                    </Card>
                     {items.length > 0 && (
-                        <Card>
-                            <CardHeader><div className="flex items-center justify-between"><div><CardTitle className="flex items-center gap-2"><ReceiptText className="h-5 w-5 text-primary" /> Item Pengadaan (RAB)</CardTitle></div><div className="text-right"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Anggaran</p><p className="text-lg font-bold text-primary">{formatCurrency(totalAmount)}</p></div></div></CardHeader>
-                            <CardContent><div className="rounded-md border overflow-hidden"><table className="w-full text-sm"><thead className="bg-muted/50 border-b"><tr><th className="px-4 py-3 text-left font-medium">Item</th><th className="px-4 py-3 text-center font-medium">Qty</th><th className="px-4 py-3 text-right font-medium">Harga Satuan</th><th className="px-4 py-3 text-right font-medium">Subtotal</th></tr></thead><tbody className="divide-y">{items.map((item) => <tr key={item.id}><td className="px-4 py-3 font-medium">{item.name}</td><td className="px-4 py-3 text-center">{item.quantity}</td><td className="px-4 py-3 text-right">{formatCurrency(item.price)}</td><td className="px-4 py-3 text-right font-semibold">{formatCurrency(Number(item.price) * item.quantity)}</td></tr>)}</tbody></table></div></CardContent>
+                        <Card className="overflow-hidden border shadow-sm">
+                            <CardHeader className="pb-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <CardTitle className="flex items-center gap-2 text-primary">
+                                            <ReceiptText className="h-5 w-5" /> 
+                                            Item Pengadaan (RAB)
+                                        </CardTitle>
+                                        <CardDescription>Rincian barang atau jasa yang diajukan.</CardDescription>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Anggaran</p>
+                                        <p className="text-2xl font-black text-primary tabular-nums">{formatCurrency(totalAmount)}</p>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="overflow-x-auto border-t">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-muted/50 border-b">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Nama Item</th>
+                                                <th className="px-4 py-3 text-center font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Qty</th>
+                                                <th className="px-4 py-3 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Harga Satuan</th>
+                                                <th className="px-4 py-3 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {items.map((item) => (
+                                                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                                                    <td className="px-4 py-3.5 font-semibold text-foreground">{item.name}</td>
+                                                    <td className="px-4 py-3.5 text-center font-medium">{item.quantity}</td>
+                                                    <td className="px-4 py-3.5 text-right text-muted-foreground">{formatCurrency(item.price)}</td>
+                                                    <td className="px-4 py-3.5 text-right font-bold text-primary tabular-nums">{formatCurrency(Number(item.price) * item.quantity)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
                         </Card>
                     )}
+
+                    <Card className="shadow-sm border-muted/20">
+                        <CardHeader className="border-b border-muted/20 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
+                                    <History className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle>Alur Pengadaan</CardTitle>
+                                    <CardDescription>Lacak tahapan dokumen pengadaan ini.</CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pt-2">
+                            <div className="pl-2">
+                                {WORKFLOW_STEP_CONFIG.map((step) => {
+                                    const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
+                                    const isActive = activeIndex === step.index && pr.status !== 'COMPLETED';
+                                    const isStepReached = activeIndex >= step.index || pr.status === 'COMPLETED';
+                                    const stepValue = (pr as any)[step.noteField];
+                                    const canEditStep = (step.index === 0 || step.index === 4) 
+                                        ? (pr.requesterId === session.user.id || (session.user.role as string) === 'GA_MANAGER')
+                                        : ((session.user.role as string) === 'GA_STAFF' || (session.user.role as string) === 'GA_MANAGER');
+                                    const canEditThisNow = canEditStep && pr.status !== 'COMPLETED' && isStepReached;
+                                    const stepLogs = logs.filter(({ log }) => {
+                                        const mappedIdx = logStepMapping.get(log.id);
+                                        return step.index === 5 && mappedIdx === 4 ? logIsRevisionFix.get(log.id) : mappedIdx === step.index;
+                                    });
+
+                                    return (
+                                        <TimelineStep key={step.index} id={`step-${step.index}`} title={step.title} isCompleted={isCompleted} isActive={isActive}>
+                                            <div className="mt-3 text-sm space-y-4">
+                                                {isActive && (
+                                                    <div className={`p-4 rounded-lg border transition-all duration-300 ${canActionAtActiveStep ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 shadow-sm animate-in fade-in slide-in-from-top-1' : 'bg-muted/20 border-dashed border-muted-foreground/20'}`}>
+                                                        <div className="w-full mb-2"><h5 className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${canActionAtActiveStep ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{canActionAtActiveStep ? <><AlertCircle className="h-3 w-3" /> Tindakan Diperlukan</> : <><Clock className="h-3 w-3" /> Status</>}</h5></div>
+                                                        {canActionAtActiveStep ? (
+                                                            <div className="flex flex-wrap items-center gap-3"><PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role as any} isOwner={pr.requesterId === session.user.id} /></div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2 text-muted-foreground"><div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-pulse" /><p className="text-sm italic">{WAITING_MESSAGES[pr.status] || 'Proses sedang berjalan ke tahap berikutnya.'}</p></div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {(stepValue || canEditThisNow) && !( (pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog) && (
+                                                    <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm">
+                                                        <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Catatan / Keterangan</h5>
+                                                        <PREditableNote prId={pr.id} field={step.noteField} initialValue={stepValue ?? null} canEdit={canEditThisNow} />
+                                                    </div>
+                                                )}
+                                                {step.fileField && (step.isMulti ? (pr as any)[step.fileField]?.split(',').filter(Boolean).map((u: string, i: number) => renderFile(u, `${step.fileLabel} ${i+1}`, step.fileField, canEditThisNow, true, `f-${step.index}-${i}`)) : renderFile((pr as any)[step.fileField], step.fileLabel, step.fileField, canEditThisNow))}
+                                                {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.fileField && !step.isFinal && <ApprovedBadge />}
+                                                {(pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog && (
+                                                    <StatusBadge prId={pr.id} logId={exceptionLog.log.id} status={pr.status as any} notes={exceptionLog.log.notes} canEdit={exceptionLog.log.actorId === session.user.id || session.user.role === 'GA_MANAGER'} />
+                                                )}
+                                                {stepLogs.length > 0 && (
+                                                    <div className="pt-3 pb-1">
+                                                        <div className="flex items-center justify-between mb-4"><h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Riwayat Aktivitas</h5></div>
+                                                        <div className="space-y-5 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/60">
+                                                            {stepLogs.map(({ log, actor }) => {
+                                                                const isRevisionFix = logIsRevisionFix.get(log.id) || (step.index === 5 && logStepMapping.get(log.id) === 4);
+                                                                return (
+                                                                    <div key={log.id} className="flex gap-3 items-center relative z-10">
+                                                                        <Avatar className="h-6 w-6 border bg-background ring-4 ring-background"><AvatarFallback className="text-[9px] font-bold text-primary bg-primary/10">{(actor?.name || 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                                                                        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                                                                            <div className="flex items-center gap-2 truncate">
+                                                                                <p className="text-[13px] leading-relaxed text-foreground/90 truncate"><span className="font-bold">{actor?.name || 'Sistem'}</span> <span className="text-muted-foreground">{isRevisionFix ? 'telah merevisi dokumen' : getActionLabel(log)}</span></p>
+                                                                                {isRevisionFix && step.index !== 4 && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-sm shrink-0"><History className="h-2.5 w-2.5" /> Direvisi</span>}
+                                                                            </div>
+                                                                            <span className="text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md tabular-nums">{new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TimelineStep>
+                                    );
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
                 <div className="space-y-6">
-                    <Card>
-                        <CardHeader><CardTitle>Informasi Pengajuan</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            {[ { l: 'Judul Pengajuan', v: pr.title, b: true }, { l: 'ID Pengajuan', v: pr.id, m: true }, { l: 'Status', component: <PRStatusBadge status={pr.status} /> }, { l: 'Pemohon', v: requester?.name || requester?.username }, { l: 'Cabang', v: requester?.location || 'Tidak diketahui' }, { l: 'Waktu Pengajuan', v: new Date(pr.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) } ].map((info, i) => (
-                                <div key={i} className="space-y-1">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{info.l}</p>
-                                    {info.component || <p className={`text-sm ${info.b ? 'font-bold' : info.m ? 'font-mono font-medium' : 'font-medium'}`}>{info.v}</p>}
+                    <Card className="overflow-hidden border-none shadow-xl bg-gradient-to-b from-card to-muted/20">
+                        <div className="h-1.5 w-full bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+                        <CardHeader><CardTitle className="text-lg font-bold">Informasi Pengajuan</CardTitle></CardHeader>
+                        <CardContent className="space-y-6">
+                            {[ 
+                                { l: 'Judul Pengajuan', v: pr.title, b: true, i: <FileText className="h-4 w-4" /> }, 
+                                { l: 'Total Anggaran', v: formatCurrency(totalAmount), highlighted: true, i: <ReceiptText className="h-4 w-4" /> },
+                                { l: 'ID Pengajuan', v: pr.id, m: true, i: <div className="h-4 w-4 flex items-center justify-center text-[10px] font-black border border-current rounded-sm">ID</div> }, 
+                                { l: 'Status', component: <div className="pt-1"><PRStatusBadge status={pr.status} /></div>, i: <Clock className="h-4 w-4" /> }, 
+                                { l: 'Pemohon', v: requester?.name || requester?.username, i: <User className="h-4 w-4" /> }, 
+                                { l: 'Cabang', v: requester?.location || 'Tidak diketahui', i: <MapPin className="h-4 w-4" /> }, 
+                                { l: 'Waktu Pengajuan', v: new Date(pr.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }), i: <CalendarDays className="h-4 w-4" /> } 
+                            ].map((info, i) => (
+                                <div key={i} className="flex gap-4">
+                                    <div className="mt-1 p-2 rounded-lg bg-muted text-muted-foreground/70 shrink-0">
+                                        {info.i}
+                                    </div>
+                                    <div className="space-y-1 min-w-0">
+                                        <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">{info.l}</p>
+                                        {info.component || (
+                                            <p className={`text-sm truncate ${
+                                                info.highlighted ? 'text-xl font-black text-primary tracking-tight' : 
+                                                info.b ? 'font-bold' : 
+                                                info.m ? 'font-mono text-[12px] bg-muted/50 px-1.5 py-0.5 rounded' : 
+                                                'font-medium'
+                                            }`}>
+                                                {info.v}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                             {pr.status === 'COMPLETED' && completionLog && (
-                                <div className="space-y-1">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Waktu Selesai</p>
-                                    <p className="text-sm font-medium text-green-600 dark:text-green-400">{new Date(completionLog.log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                <div className="flex gap-4 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                                    <div className="mt-1 p-2 rounded-lg bg-green-500/10 text-green-500 shrink-0">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-green-500/60 uppercase tracking-widest">Selesai Pada</p>
+                                        <p className="text-sm font-bold text-green-600 dark:text-green-400">{new Date(completionLog.log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                    </div>
                                 </div>
                             )}
                         </CardContent>
