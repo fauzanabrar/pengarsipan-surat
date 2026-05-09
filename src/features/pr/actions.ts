@@ -91,7 +91,7 @@ export async function createRAB(
     prId: string,
     rabUrl: string | null,
     keterangan: string,
-    items?: { name: string; quantity: number; price: string }[]
+    items?: { name: string; category: string; quantity: number; price: string }[]
 ) {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
@@ -109,6 +109,7 @@ export async function createRAB(
                 eq(purchaseRequests.id, prId),
                 or(
                     eq(purchaseRequests.status, 'PENDING_RAB'),
+                    eq(purchaseRequests.status, 'PENDING_GA_MANAGER'),
                     eq(purchaseRequests.status, 'REVISION')
                 )
             ))
@@ -122,6 +123,7 @@ export async function createRAB(
                 items.map(item => ({
                     prId,
                     name: item.name,
+                    category: item.category,
                     quantity: item.quantity,
                     price: item.price,
                 }))

@@ -22,6 +22,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -34,25 +41,54 @@ interface PRActionButtonsProps {
     status: string;
     userRole: 'CABANG' | 'GA_STAFF' | 'GA_MANAGER';
     isOwner?: boolean;
+    initialRabItems?: RABItem[];
+    initialRabUrl?: string | null;
+    initialRabNotes?: string | null;
+    variant?: 'default' | 'minimal';
+    category?: 'RAB' | 'GENERAL';
 }
 
 interface RABItem {
     name: string;
+    category: string;
     quantity: number;
     price: string;
 }
 
-export function PRActionButtons({ prId, status, userRole, isOwner }: PRActionButtonsProps) {
+const CATEGORIES = [
+    "Elektronik",
+    "Funitur",
+    "Kendaraan",
+    "Peralatan",
+    "Software",
+    "Lainnya"
+];
+
+export function PRActionButtons({ 
+    prId, status, userRole, isOwner, 
+    initialRabItems, initialRabUrl, initialRabNotes,
+    variant = 'default',
+    category = 'GENERAL'
+}: PRActionButtonsProps) {
     const [isLoading, setIsLoading] = useState(false);
     
     // Upload state for dialogs
-    const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
+    const [uploadMode, setUploadMode] = useState<"file" | "url">(initialRabUrl ? "url" : "file");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [enteredUrl, setEnteredUrl] = useState("");
-    const [keterangan, setKeterangan] = useState("");
+    const [enteredUrl, setEnteredUrl] = useState(initialRabUrl || "");
+    const [keterangan, setKeterangan] = useState(initialRabNotes || "");
     
     // RAB Items state
-    const [rabItems, setRabItems] = useState<RABItem[]>([{ name: '', quantity: 1, price: '' }]);
+    const [rabItems, setRabItems] = useState<RABItem[]>(
+        initialRabItems && initialRabItems.length > 0 
+            ? initialRabItems.map(item => ({
+                name: item.name,
+                category: item.category,
+                quantity: item.quantity,
+                price: item.price.toString()
+            }))
+            : [{ name: '', category: 'Elektronik', quantity: 1, price: '' }]
+    );
     
     // Dialog states
     const [showUploadGambar, setShowUploadGambar] = useState(false);
@@ -64,13 +100,35 @@ export function PRActionButtons({ prId, status, userRole, isOwner }: PRActionBut
     const [showReject, setShowReject] = useState(false);
     const [showRevision, setShowRevision] = useState(false);
     const [showDeletePR, setShowDeletePR] = useState(false);
+    
+    // Bulk add state
+    const [bulkInput, setBulkInput] = useState("");
+    const [showBulkAdd, setShowBulkAdd] = useState(false);
+
+    const handleBulkAdd = () => {
+        const lines = bulkInput.split('\n').filter(line => line.trim() !== '');
+        const newItems: RABItem[] = lines.map(line => {
+            const parts = line.split(/[,;\t]/).map(p => p.trim());
+            return {
+                name: parts[0] || 'Item Baru',
+                category: CATEGORIES.includes(parts[1]) ? parts[1] : 'Lainnya',
+                quantity: parseInt(parts[2]) || 1,
+                price: parts[3] || '0'
+            };
+        });
+        
+        setRabItems([...rabItems.filter(i => i.name !== ''), ...newItems]);
+        setBulkInput("");
+        setShowBulkAdd(false);
+        toast.success(`${newItems.length} item berhasil ditambahkan`);
+    };
 
     const resetState = () => {
         setSelectedFile(null);
         setEnteredUrl("");
         setKeterangan("");
         setUploadMode("file");
-        setRabItems([{ name: '', quantity: 1, price: '' }]);
+        setRabItems([{ name: '', category: 'Elektronik', quantity: 1, price: '' }]);
     };
 
     const handleFileUpload = async () => {
@@ -100,7 +158,7 @@ export function PRActionButtons({ prId, status, userRole, isOwner }: PRActionBut
         }
     };
 
-    const addRabItem = () => setRabItems([...rabItems, { name: '', quantity: 1, price: '' }]);
+    const addRabItem = () => setRabItems([...rabItems, { name: '', category: 'Elektronik', quantity: 1, price: '' }]);
     const removeRabItem = (index: number) => setRabItems(rabItems.filter((_, i) => i !== index));
     const updateRabItem = (index: number, field: keyof RABItem, value: string | number) => {
         const newItems = [...rabItems];
@@ -109,67 +167,106 @@ export function PRActionButtons({ prId, status, userRole, isOwner }: PRActionBut
     };
 
     const getAvailableActions = () => {
-        const actions: { label: string; onClick: () => void; variant?: 'default' | 'destructive' | 'outline' | 'secondary' }[] = [];
+        const actions: { label: string; onClick: () => void; variant?: 'default' | 'destructive' | 'outline' | 'secondary'; type: 'RAB' | 'OTHER' }[] = [];
+        const role = userRole?.toUpperCase();
 
-        if (userRole === 'GA_STAFF') {
-            if (status === 'PENDING_GAMBAR') actions.push({ label: 'Upload Gambar', onClick: () => setShowUploadGambar(true) });
-            if (status === 'PENDING_RAB') actions.push({ label: 'Buat RAB', onClick: () => setShowCreateRAB(true) });
-            if (status === 'PENDING_VERIFIKASI') actions.push({ label: 'Verifikasi Spesifikasi', onClick: () => setShowVerifikasi(true) });
-            if (status === 'PENDING_PENGADAAN') actions.push({ label: 'Selesaikan Pengadaan', onClick: () => setShowComplete(true) });
+        if (role === 'GA_STAFF') {
+            if (status === 'PENDING_GAMBAR') actions.push({ label: 'Upload Gambar', onClick: () => setShowUploadGambar(true), type: 'OTHER' });
+            
+            // RAB editing is available in both RAB creation and Manager Approval stages for STAFF only
+            if (status === 'PENDING_RAB' || status === 'PENDING_GA_MANAGER') {
+                const hasRab = initialRabUrl || (initialRabItems && initialRabItems.length > 0);
+                actions.push({ 
+                    label: hasRab ? 'Edit RAB' : 'Buat RAB', 
+                    type: 'RAB',
+                    onClick: () => {
+                        // Ensure state matches current RAB if editing
+                        if (hasRab) {
+                            setEnteredUrl(initialRabUrl || "");
+                            setKeterangan(initialRabNotes || "");
+                            setUploadMode(initialRabUrl ? "url" : "file");
+                            if (initialRabItems) {
+                                setRabItems(initialRabItems.map(item => ({
+                                    name: item.name,
+                                    category: item.category,
+                                    quantity: item.quantity,
+                                    price: item.price.toString()
+                                })));
+                            }
+                        }
+                        setShowCreateRAB(true);
+                    } 
+                });
+            }
+            
+            if (status === 'PENDING_VERIFIKASI') actions.push({ label: 'Verifikasi Spesifikasi', onClick: () => setShowVerifikasi(true), type: 'OTHER' });
+            if (status === 'PENDING_PENGADAAN') actions.push({ label: 'Selesaikan Pengadaan', onClick: () => setShowComplete(true), type: 'OTHER' });
         }
 
-        if (userRole === 'GA_MANAGER') {
-            if (status === 'PENDING_GA_MANAGER') actions.push({ label: 'Approval Manager', onClick: () => setShowApproveManager(true) });
+        if (role === 'GA_MANAGER') {
+            if (status === 'PENDING_GA_MANAGER') actions.push({ label: 'Approval Manager', onClick: () => setShowApproveManager(true), type: 'OTHER' });
         }
 
         if (status === 'PENDING_CABANG_PR' || status === 'REVISION') {
             if (isOwner) {
-                actions.push({ label: 'Upload PR Approved', onClick: () => setShowSubmitPR(true) });
+                actions.push({ label: 'Upload PR Approved', onClick: () => setShowSubmitPR(true), type: 'OTHER' });
             }
         }
 
         // Add Reject/Revision for staff and manager
-        if (userRole !== 'CABANG' && !['COMPLETED', 'REJECTED'].includes(status)) {
+        if (role !== 'CABANG' && !['COMPLETED', 'REJECTED'].includes(status)) {
             // Minta Revisi is NOT available for Gambar, RAB, or Manager Approval stages
             if (!['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_GA_MANAGER'].includes(status)) {
-                actions.push({ label: 'Minta Revisi', onClick: () => setShowRevision(true), variant: 'outline' });
+                actions.push({ label: 'Minta Revisi', onClick: () => setShowRevision(true), variant: 'outline', type: 'OTHER' });
             }
             
             // Tolak is NOT available for Gambar or RAB stages
             // Also, during GA Manager Approval and PR Upload stages, only the GA_MANAGER can reject
             const isRestrictedStage = ['PENDING_GA_MANAGER', 'PENDING_CABANG_PR'].includes(status);
-            const canTolak = !['PENDING_GAMBAR', 'PENDING_RAB'].includes(status) && (!isRestrictedStage || userRole === 'GA_MANAGER');
+            const canTolak = !['PENDING_GAMBAR', 'PENDING_RAB'].includes(status) && (!isRestrictedStage || role === 'GA_MANAGER');
             
             if (canTolak) {
-                actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive' });
+                actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive', type: 'OTHER' });
             }
         }
 
         // Only owner can delete the PR and only during the first step
         if (isOwner && status === 'PENDING_GAMBAR') {
-            actions.push({ label: 'Hapus Pengajuan', onClick: () => setShowDeletePR(true), variant: 'destructive' });
+            actions.push({ label: 'Hapus Pengajuan', onClick: () => setShowDeletePR(true), variant: 'destructive', type: 'OTHER' });
         }
 
         return actions;
     };
 
-    const actions = getAvailableActions();
-    if (actions.length === 0) return null;
+        const actions = getAvailableActions();
+        
+        // Filter based on category if requested
+        let filteredActions = actions;
+        if (category === 'RAB') {
+            filteredActions = actions.filter(a => a.type === 'RAB');
+        } else if (variant === 'minimal') {
+            // In minimal general mode, just show the first action
+            filteredActions = actions.slice(0, 1);
+        }
+        
+        if (filteredActions.length === 0) return null;
 
-    return (
-        <>
-            <div className="flex gap-2 flex-wrap">
-                {actions.map((action, index) => (
-                    <Button
-                        key={index}
-                        variant={action.variant || 'default'}
-                        onClick={action.onClick}
-                        disabled={isLoading}
-                    >
-                        {action.label}
-                    </Button>
-                ))}
-            </div>
+        return (
+            <>
+                <div className="flex gap-2 flex-wrap">
+                    {filteredActions.map((action, index) => (
+                        <Button
+                            key={index}
+                            variant={variant === 'minimal' ? 'secondary' : (action.variant || 'default')}
+                            size={variant === 'minimal' ? 'sm' : 'default'}
+                            className={variant === 'minimal' ? 'h-7 px-3 text-[11px] font-bold shadow-sm border' : ''}
+                            onClick={action.onClick}
+                            disabled={isLoading}
+                        >
+                            {action.label}
+                        </Button>
+                    ))}
+                </div>
 
             {/* Stage 2: Upload Gambar */}
             <Dialog open={showUploadGambar} onOpenChange={setShowUploadGambar}>
@@ -208,24 +305,69 @@ export function PRActionButtons({ prId, status, userRole, isOwner }: PRActionBut
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                         <div className="space-y-4">
-                            <Label className="flex items-center gap-2"><ReceiptText className="h-4 w-4" /> Item Pengadaan</Label>
-                            {rabItems.map((item, idx) => (
-                                <div key={idx} className="flex gap-3 items-end border p-3 rounded-lg bg-muted/30">
-                                    <div className="flex-1 space-y-1.5">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Nama Barang/Jasa</Label>
-                                        <Input placeholder="Nama item" value={item.name} onChange={(e) => updateRabItem(idx, 'name', e.target.value)} />
-                                    </div>
-                                    <div className="w-20 space-y-1.5">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Qty</Label>
-                                        <Input type="number" min="1" value={item.quantity} onChange={(e) => updateRabItem(idx, 'quantity', parseInt(e.target.value))} />
-                                    </div>
-                                    <div className="w-32 space-y-1.5">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Harga Satuan</Label>
-                                        <Input type="number" placeholder="Harga" value={item.price} onChange={(e) => updateRabItem(idx, 'price', e.target.value)} />
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeRabItem(idx)} disabled={rabItems.length === 1}>
-                                        <Trash2 className="h-4 w-4" />
+                            <Label className="flex items-center justify-between">
+                                <div className="flex items-center gap-2"><ReceiptText className="h-4 w-4" /> Item Pengadaan</div>
+                                <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px] font-bold" onClick={() => setShowBulkAdd(!showBulkAdd)}>
+                                    {showBulkAdd ? 'Tutup Bulk Add' : 'Tambah Banyak (Bulk)'}
+                                </Button>
+                            </Label>
+
+                            {showBulkAdd && (
+                                <div className="space-y-2 p-3 bg-muted/50 border rounded-md">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Format: Nama Item, Kategori, Qty, Harga (Pisahkan koma/tab)</Label>
+                                    <Textarea 
+                                        placeholder="Contoh:&#10;Laptop, Elektronik, 2, 15000000&#10;Kursi, Funitur, 10, 500000" 
+                                        rows={4} 
+                                        className="text-xs font-mono"
+                                        value={bulkInput}
+                                        onChange={(e) => setBulkInput(e.target.value)}
+                                    />
+                                    <Button type="button" size="sm" className="w-full text-xs h-8" onClick={handleBulkAdd} disabled={!bulkInput.trim()}>
+                                        Proses & Tambah ke Daftar
                                     </Button>
+                                </div>
+                            )}
+
+                            {rabItems.map((item, idx) => (
+                                <div key={idx} className="flex flex-col gap-3 border p-4 rounded-lg bg-muted/30">
+                                    <div className="flex gap-3 items-end">
+                                        <div className="flex-1 space-y-1.5">
+                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Nama Barang/Jasa</Label>
+                                            <Input placeholder="Nama item" value={item.name} onChange={(e) => updateRabItem(idx, 'name', e.target.value)} />
+                                        </div>
+                                        <div className="w-[180px] space-y-1.5">
+                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Kategori</Label>
+                                            <Select value={item.category} onValueChange={(val) => updateRabItem(idx, 'category', val)}>
+                                                <SelectTrigger className="h-9">
+                                                    <SelectValue placeholder="Pilih Kategori" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {CATEGORIES.map(cat => (
+                                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="text-destructive h-9 w-9 shrink-0" onClick={() => removeRabItem(idx)} disabled={rabItems.length === 1}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    <div className="flex gap-3 items-end">
+                                        <div className="w-20 space-y-1.5">
+                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Qty</Label>
+                                            <Input type="number" min="1" value={item.quantity} onChange={(e) => updateRabItem(idx, 'quantity', parseInt(e.target.value))} />
+                                        </div>
+                                        <div className="flex-1 space-y-1.5">
+                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Harga Satuan</Label>
+                                            <Input type="number" placeholder="Harga" value={item.price} onChange={(e) => updateRabItem(idx, 'price', e.target.value)} />
+                                        </div>
+                                        <div className="w-[120px] space-y-1.5 text-right">
+                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Subtotal</Label>
+                                            <div className="h-9 flex items-center justify-end px-3 bg-background border rounded-md font-bold text-xs tabular-nums">
+                                                {new Intl.NumberFormat('id-ID').format(Number(item.price || 0) * item.quantity)}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                             <Button type="button" variant="outline" size="sm" className="w-full gap-2" onClick={addRabItem}>

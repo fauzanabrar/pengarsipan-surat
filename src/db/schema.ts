@@ -67,6 +67,7 @@ export const prItems = pgTable('pr_items', {
     id: uuid('id').defaultRandom().primaryKey(),
     prId: uuid('pr_id').references(() => purchaseRequests.id, { onDelete: 'cascade' }).notNull(),
     name: text('name').notNull(),
+    category: text('category').default('Lainnya').notNull(),
     quantity: integer('quantity').default(1).notNull(),
     price: decimal('price', { precision: 12, scale: 2 }).notNull(),
 });

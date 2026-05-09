@@ -202,7 +202,13 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
             <div key={key} className="flex items-center gap-3 p-3 mt-2 bg-muted/50 border rounded-md group/file">
                 <FileText className="h-5 w-5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0"><a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline block truncate">{label}</a></div>
-                <PRFileActions prId={pr.id} field={field} canEdit={canEdit && pr.status !== 'COMPLETED'} canDelete={canDelete && pr.status !== 'COMPLETED'} />
+                <PRFileActions 
+                    prId={pr.id} 
+                    field={field} 
+                    canEdit={canEdit && pr.status !== 'COMPLETED'} 
+                    canDelete={canDelete && pr.status !== 'COMPLETED'} 
+                    initialRabItems={field === 'rabUrl' ? items : undefined}
+                />
                 <Button variant="secondary" size="sm" className="gap-2 shrink-0" asChild><Link href={url} target="_blank" rel="noopener noreferrer"><span className="hidden sm:inline">Lihat File</span><ExternalLink className="h-4 w-4" /></Link></Button>
             </div>
         );
@@ -222,7 +228,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
             <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
                 <div className="col-span-1 lg:col-span-2 space-y-6">
-                    {items.length > 0 && (
+                    {(items.length > 0 || pr.status === 'PENDING_RAB' || pr.status === 'PENDING_GA_MANAGER') && (
                         <Card className="overflow-hidden border shadow-sm">
                             <CardHeader className="py-3 px-4 bg-muted/20 border-b">
                                 <div className="flex items-center justify-between">
@@ -230,8 +236,21 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                         <ReceiptText className="h-4 w-4 text-primary" />
                                         <CardTitle className="text-sm font-bold text-foreground">Item Pengadaan (RAB)</CardTitle>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-[14px] font-black text-primary tabular-nums">{formatCurrency(totalAmount)}</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-right">
+                                            <p className="text-[14px] font-black text-primary tabular-nums">{formatCurrency(totalAmount)}</p>
+                                        </div>
+                                        <PRActionButtons 
+                                            prId={pr.id} 
+                                            status={pr.status} 
+                                            userRole={session.user.role as any} 
+                                            isOwner={pr.requesterId === session.user.id} 
+                                            initialRabItems={items}
+                                            initialRabUrl={pr.rabUrl}
+                                            initialRabNotes={pr.keteranganRab}
+                                            variant="minimal"
+                                            category="RAB"
+                                        />
                                     </div>
                                 </div>
                             </CardHeader>
@@ -241,20 +260,35 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                         <thead className="bg-muted/10 border-b">
                                             <tr>
                                                 <th className="px-4 py-2 text-left font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Nama Item</th>
+                                                <th className="px-4 py-2 text-left font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Kategori</th>
                                                 <th className="px-4 py-2 text-center font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Qty</th>
                                                 <th className="px-4 py-2 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Harga Satuan</th>
                                                 <th className="px-4 py-2 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Subtotal</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border/40">
-                                            {items.map((item) => (
+                                            {items.length > 0 ? items.map((item) => (
                                                 <tr key={item.id} className="hover:bg-muted/10 transition-colors">
                                                     <td className="px-4 py-2.5 font-medium text-foreground">{item.name}</td>
+                                                    <td className="px-4 py-2.5 text-left">
+                                                        <span className="px-2 py-0.5 rounded-full bg-muted border text-[10px] font-bold uppercase tracking-tighter text-muted-foreground">
+                                                            {(item as any).category || 'Lainnya'}
+                                                        </span>
+                                                    </td>
                                                     <td className="px-4 py-2.5 text-center font-medium">{item.quantity}</td>
                                                     <td className="px-4 py-2.5 text-right text-muted-foreground">{formatCurrency(item.price)}</td>
                                                     <td className="px-4 py-2.5 text-right font-bold text-primary tabular-nums">{formatCurrency(Number(item.price) * item.quantity)}</td>
                                                 </tr>
-                                            ))}
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-10 text-center">
+                                                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                                            <ReceiptText className="h-8 w-8 opacity-20" />
+                                                            <p className="text-sm italic">Belum ada rincian item. Silakan klik "Buat RAB" untuk menambahkan.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -281,7 +315,10 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     const canEditStep = (step.index === 0 || step.index === 4) 
                                         ? (pr.requesterId === session.user.id || (session.user.role as string) === 'GA_MANAGER')
                                         : ((session.user.role as string) === 'GA_STAFF' || (session.user.role as string) === 'GA_MANAGER');
-                                    const canEditThisNow = canEditStep && pr.status !== 'COMPLETED' && isStepReached;
+                                    
+                                    // Allow editing RAB even when in Manager Approval stage (for GA STAFF only)
+                                    const isRabEditInManagerStage = step.index === 2 && pr.status === 'PENDING_GA_MANAGER';
+                                    const canEditThisNow = (canEditStep && pr.status !== 'COMPLETED' && isStepReached) || (isRabEditInManagerStage && (session.user.role as string) === 'GA_STAFF');
                                     const stepLogs = logs.filter(({ log }) => {
                                         const mappedIdx = logStepMapping.get(log.id);
                                         return step.index === 5 && mappedIdx === 4 ? logIsRevisionFix.get(log.id) : mappedIdx === step.index;
@@ -294,8 +331,18 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                     <div className={`p-4 rounded-lg border transition-all duration-300 ${canActionAtActiveStep ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 shadow-sm animate-in fade-in slide-in-from-top-1' : 'bg-muted/20 border-dashed border-muted-foreground/20'}`}>
                                                         <div className="w-full mb-2"><h5 className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${canActionAtActiveStep ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{canActionAtActiveStep ? <><AlertCircle className="h-3 w-3" /> Tindakan Diperlukan</> : <><Clock className="h-3 w-3" /> Status</>}</h5></div>
                                                         {canActionAtActiveStep ? (
-                                                            <div className="flex flex-wrap items-center gap-3"><PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role as any} isOwner={pr.requesterId === session.user.id} /></div>
-                                                        ) : (
+                                                             <div className="flex flex-wrap items-center gap-3">
+                                                                 <PRActionButtons 
+                                                                     prId={pr.id} 
+                                                                     status={pr.status} 
+                                                                     userRole={session.user.role as any} 
+                                                                     isOwner={pr.requesterId === session.user.id} 
+                                                                     initialRabItems={items}
+                                                                     initialRabUrl={pr.rabUrl}
+                                                                     initialRabNotes={pr.keteranganRab}
+                                                                 />
+                                                             </div>
+                                                         ) : (
                                                             <div className="flex items-center gap-2 text-muted-foreground"><div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-pulse" /><p className="text-sm italic">{WAITING_MESSAGES[pr.status] || 'Proses sedang berjalan ke tahap berikutnya.'}</p></div>
                                                         )}
                                                     </div>
