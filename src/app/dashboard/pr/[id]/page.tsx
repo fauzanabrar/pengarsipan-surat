@@ -60,7 +60,7 @@ const TimelineStep = ({ id, title, isActive, isCompleted, children }: { id?: str
             <div className="absolute top-5 bottom-0 left-2.5 w-px bg-border -z-0"></div>
         </div>
         <div className={`flex-1 pt-0 ${!isActive && !isCompleted ? 'opacity-50' : ''}`}>
-            <h4 className="text-sm font-bold">{title}</h4>
+            <h4 className="text-base font-black tracking-tight">{title}</h4>
             {children}
         </div>
     </div>
@@ -224,39 +224,35 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                 <div className="col-span-1 lg:col-span-2 space-y-6">
                     {items.length > 0 && (
                         <Card className="overflow-hidden border shadow-sm">
-                            <CardHeader className="pb-4">
+                            <CardHeader className="py-3 px-4 bg-muted/20 border-b">
                                 <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <CardTitle className="flex items-center gap-2 text-primary">
-                                            <ReceiptText className="h-5 w-5" /> 
-                                            Item Pengadaan (RAB)
-                                        </CardTitle>
-                                        <CardDescription>Rincian barang atau jasa yang diajukan.</CardDescription>
+                                    <div className="flex items-center gap-2">
+                                        <ReceiptText className="h-4 w-4 text-primary" />
+                                        <CardTitle className="text-sm font-bold text-foreground">Item Pengadaan (RAB)</CardTitle>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Anggaran</p>
-                                        <p className="text-2xl font-black text-primary tabular-nums">{formatCurrency(totalAmount)}</p>
+                                        <p className="text-[14px] font-black text-primary tabular-nums">{formatCurrency(totalAmount)}</p>
                                     </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="overflow-x-auto border-t">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-muted/50 border-b">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-[13px]">
+                                        <thead className="bg-muted/10 border-b">
                                             <tr>
-                                                <th className="px-4 py-3 text-left font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Nama Item</th>
-                                                <th className="px-4 py-3 text-center font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Qty</th>
-                                                <th className="px-4 py-3 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Harga Satuan</th>
-                                                <th className="px-4 py-3 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Subtotal</th>
+                                                <th className="px-4 py-2 text-left font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Nama Item</th>
+                                                <th className="px-4 py-2 text-center font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Qty</th>
+                                                <th className="px-4 py-2 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Harga Satuan</th>
+                                                <th className="px-4 py-2 text-right font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Subtotal</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y">
+                                        <tbody className="divide-y divide-border/40">
                                             {items.map((item) => (
-                                                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                                                    <td className="px-4 py-3.5 font-semibold text-foreground">{item.name}</td>
-                                                    <td className="px-4 py-3.5 text-center font-medium">{item.quantity}</td>
-                                                    <td className="px-4 py-3.5 text-right text-muted-foreground">{formatCurrency(item.price)}</td>
-                                                    <td className="px-4 py-3.5 text-right font-bold text-primary tabular-nums">{formatCurrency(Number(item.price) * item.quantity)}</td>
+                                                <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                                                    <td className="px-4 py-2.5 font-medium text-foreground">{item.name}</td>
+                                                    <td className="px-4 py-2.5 text-center font-medium">{item.quantity}</td>
+                                                    <td className="px-4 py-2.5 text-right text-muted-foreground">{formatCurrency(item.price)}</td>
+                                                    <td className="px-4 py-2.5 text-right font-bold text-primary tabular-nums">{formatCurrency(Number(item.price) * item.quantity)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -266,16 +262,16 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                         </Card>
                     )}
 
-                    <Card className="shadow-sm border-muted/20">
-                        <CardHeader className="py-2 pb-0">
+                    <Card className="shadow-lg border-muted/30 overflow-hidden">
+                        <CardHeader className="py-3 px-6 pb-0">
                             <div className="flex items-center gap-3">
                                 <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500">
                                     <History className="h-4 w-4" />
                                 </div>
-                                <CardTitle className="text-sm font-bold">Alur Pengadaan</CardTitle>
+                                <CardTitle className="text-lg font-black tracking-tight text-foreground">Alur Pengadaan</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="pt-0 pb-2">
+                        <CardContent className="pt-2 px-6 pb-2">
                             <div className="pl-2">
                                 {WORKFLOW_STEP_CONFIG.map((step) => {
                                     const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
