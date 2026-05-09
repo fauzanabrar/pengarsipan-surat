@@ -80,8 +80,8 @@ export function AjukanPermohonanDialog() {
                     <span className="xs:hidden">Ajukan Permohonan</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[600px] p-0 flex flex-col max-h-[90vh]">
+                <DialogHeader className="px-6 py-4 border-b">
                     <DialogTitle>Ajukan Permohonan Pengadaan</DialogTitle>
                     <DialogDescription>
                         Lengkapi form di bawah ini untuk mengajukan permohonan pengadaan barang/jasa baru.
@@ -89,54 +89,57 @@ export function AjukanPermohonanDialog() {
                 </DialogHeader>
                 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
-                        <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Judul Pengadaan <span className="text-red-500">*</span></FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Contoh: Pembelian Laptop Kantor" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="font-bold">Judul Pengadaan <span className="text-red-500">*</span></FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Contoh: Pembelian Laptop Kantor" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <div className="space-y-3">
-                            <FormLabel>Dokumen Surat Pengajuan <span className="text-red-500">*</span></FormLabel>
-                            <UniversalUploader 
-                                currentMode={uploadMode}
-                                onModeChange={setUploadMode}
-                                onFileSelected={setSelectedFile}
-                                onUrlEntered={setEnteredUrl}
+                            <div className="space-y-3">
+                                <FormLabel className="font-bold">Dokumen Surat Pengajuan <span className="text-red-500">*</span></FormLabel>
+                                <UniversalUploader 
+                                    currentMode={uploadMode}
+                                    onModeChange={setUploadMode}
+                                    onFileSelected={setSelectedFile}
+                                    onUrlEntered={setEnteredUrl}
+                                />
+                            </div>
+
+                            <FormField
+                                control={form.control}
+                                name="keterangan"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="font-bold">Keterangan Tambahan (Opsional)</FormLabel>
+                                        <FormControl>
+                                            <Textarea 
+                                                placeholder="Tuliskan detail tambahan jika diperlukan..." 
+                                                className="resize-none" 
+                                                rows={4}
+                                                {...field} 
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
                         </div>
 
-                        <FormField
-                            control={form.control}
-                            name="keterangan"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Keterangan Tambahan (Opsional)</FormLabel>
-                                    <FormControl>
-                                        <Textarea 
-                                            placeholder="Tuliskan detail tambahan jika diperlukan..." 
-                                            className="resize-none" 
-                                            {...field} 
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <DialogFooter>
+                        <DialogFooter className="px-6 py-4 border-t bg-muted/20">
                             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
                                 Batal
                             </Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting} className="font-bold">
                                 {isSubmitting ? "Menyimpan..." : "Ajukan Sekarang"}
                             </Button>
                         </DialogFooter>

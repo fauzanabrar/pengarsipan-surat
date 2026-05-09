@@ -25,22 +25,8 @@ import {
 } from '@/components/ui/dialog';
 import { UniversalUploader } from '@/components/universal-uploader';
 import { uploadFile } from '@/lib/file-upload';
-
-interface RABItem {
-    name: string;
-    category: string;
-    quantity: number;
-    price: string;
-}
-
-const CATEGORIES = [
-    "Elektronik",
-    "Funitur",
-    "Kendaraan",
-    "Peralatan",
-    "Software",
-    "Lainnya"
-];
+import { RABItemEditor } from '@/features/pr/components/rab-item-editor';
+import { RABItem } from '@/features/pr/types';
 
 interface PRFileActionsProps {
     prId: string;
@@ -60,28 +46,6 @@ export function PRFileActions({ prId, field, canEdit, canDelete = false, initial
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [enteredUrl, setEnteredUrl] = useState("");
     
-    // Bulk add state
-    const [bulkInput, setBulkInput] = useState("");
-    const [showBulkAdd, setShowBulkAdd] = useState(false);
-
-    const handleBulkAdd = () => {
-        const lines = bulkInput.split('\n').filter(line => line.trim() !== '');
-        const newItems: RABItem[] = lines.map(line => {
-            const parts = line.split(/[,;\t]/).map(p => p.trim());
-            return {
-                name: parts[0] || 'Item Baru',
-                category: CATEGORIES.includes(parts[1]) ? parts[1] : 'Lainnya',
-                quantity: parseInt(parts[2]) || 1,
-                price: parts[3] || '0'
-            };
-        });
-        
-        setRabItems([...rabItems.filter(i => i.name !== ''), ...newItems]);
-        setBulkInput("");
-        setShowBulkAdd(false);
-        toast.success(`${newItems.length} item berhasil ditambahkan`);
-    };
-
     // RAB Items state (only used if field === 'rabUrl')
     const [rabItems, setRabItems] = useState<RABItem[]>(
         initialRabItems && initialRabItems.length > 0 
@@ -93,14 +57,6 @@ export function PRFileActions({ prId, field, canEdit, canDelete = false, initial
             }))
             : [{ name: '', category: 'Elektronik', quantity: 1, price: '' }]
     );
-
-    const addRabItem = () => setRabItems([...rabItems, { name: '', category: 'Elektronik', quantity: 1, price: '' }]);
-    const removeRabItem = (index: number) => setRabItems(rabItems.filter((_, i) => i !== index));
-    const updateRabItem = (index: number, field: keyof RABItem, value: string | number) => {
-        const newItems = [...rabItems];
-        newItems[index] = { ...newItems[index], [field]: value };
-        setRabItems(newItems);
-    };
 
     if (!canEdit) return null;
 
@@ -192,95 +148,35 @@ export function PRFileActions({ prId, field, canEdit, canDelete = false, initial
 
             {/* Edit Dialog */}
             <Dialog open={showEdit} onOpenChange={setShowEdit}>
-                <DialogContent>
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-[600px] p-0 flex flex-col max-h-[90vh]">
+                    <DialogHeader className="px-6 py-4 border-b">
                         <DialogTitle>{field === 'rabUrl' ? 'Ubah Dokumen & Rincian RAB' : 'Ganti File'}</DialogTitle>
                         <DialogDescription>
                             {field === 'rabUrl' ? 'Perbarui dokumen RAB dan rincian item jika diperlukan.' : 'Pilih file baru untuk menggantikan yang lama.'}
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-                        {field === 'rabUrl' && (
-                            <div className="space-y-4 pb-4 border-b">
-                                <Label className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2"><ReceiptText className="h-4 w-4" /> Item Rincian RAB</div>
-                                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px] font-bold" onClick={() => setShowBulkAdd(!showBulkAdd)}>
-                                        {showBulkAdd ? 'Tutup Bulk Add' : 'Tambah Banyak (Bulk)'}
-                                    </Button>
-                                </Label>
-                                
-                                {showBulkAdd && (
-                                    <div className="space-y-2 p-3 bg-muted/50 border rounded-md">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Format: Nama Item, Kategori, Qty, Harga (Pisahkan koma/tab)</Label>
-                                        <Textarea 
-                                            placeholder="Contoh:&#10;Laptop, Elektronik, 2, 15000000&#10;Kursi, Funitur, 10, 500000" 
-                                            rows={4} 
-                                            className="text-xs font-mono"
-                                            value={bulkInput}
-                                            onChange={(e) => setBulkInput(e.target.value)}
-                                        />
-                                        <Button type="button" size="sm" className="w-full text-xs h-8" onClick={handleBulkAdd} disabled={!bulkInput.trim()}>
-                                            Proses & Tambah ke Daftar
-                                        </Button>
-                                    </div>
-                                )}
+                    <div className="flex-1 overflow-y-auto px-6 py-4">
+                        <div className="grid gap-6">
+                            {field === 'rabUrl' && (
+                                <RABItemEditor items={rabItems} onChange={setRabItems} />
+                            )}
 
-                                {rabItems.map((item, idx) => (
-                                    <div key={idx} className="flex flex-col gap-2 border p-3 rounded-md bg-muted/30 relative group">
-                                        <div className="flex gap-2 items-end">
-                                            <div className="flex-1 space-y-1">
-                                                <Label className="text-[9px] uppercase font-bold text-muted-foreground">Nama Item</Label>
-                                                <Input className="h-8 text-sm" placeholder="Nama item" value={item.name} onChange={(e) => updateRabItem(idx, 'name', e.target.value)} />
-                                            </div>
-                                            <div className="w-[120px] space-y-1">
-                                                <Label className="text-[9px] uppercase font-bold text-muted-foreground">Kategori</Label>
-                                                <Select value={item.category} onValueChange={(val) => updateRabItem(idx, 'category', val)}>
-                                                    <SelectTrigger className="h-8 text-xs">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {CATEGORIES.map(cat => (
-                                                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2 items-end">
-                                            <div className="w-16 space-y-1">
-                                                <Label className="text-[9px] uppercase font-bold text-muted-foreground">Qty</Label>
-                                                <Input className="h-8 text-sm" type="number" min="1" value={item.quantity} onChange={(e) => updateRabItem(idx, 'quantity', parseInt(e.target.value))} />
-                                            </div>
-                                            <div className="flex-1 space-y-1">
-                                                <Label className="text-[9px] uppercase font-bold text-muted-foreground">Harga Satuan</Label>
-                                                <Input className="h-8 text-sm" type="number" placeholder="Harga" value={item.price} onChange={(e) => updateRabItem(idx, 'price', e.target.value)} />
-                                            </div>
-                                            <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeRabItem(idx)} disabled={rabItems.length === 1}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                                <Button type="button" variant="outline" size="sm" className="w-full gap-2 h-8 text-xs" onClick={addRabItem}>
-                                    <Plus className="h-3 w-3" /> Tambah Item
-                                </Button>
+                            <div className="space-y-3">
+                                <Label className="font-bold">{field === 'rabUrl' ? 'Upload Dokumen RAB Baru' : 'File Baru'}</Label>
+                                <UniversalUploader 
+                                    currentMode={uploadMode} 
+                                    onModeChange={setUploadMode}
+                                    onFileSelected={setSelectedFile} 
+                                    onUrlEntered={setEnteredUrl}
+                                />
                             </div>
-                        )}
-
-                        <div className="space-y-3">
-                            <Label className="text-sm font-bold">{field === 'rabUrl' ? 'Upload Dokumen RAB Baru' : 'File Baru'}</Label>
-                            <UniversalUploader 
-                                currentMode={uploadMode} 
-                                onModeChange={setUploadMode}
-                                onFileSelected={setSelectedFile} 
-                                onUrlEntered={setEnteredUrl}
-                            />
                         </div>
                     </div>
-                    <DialogFooter>
+
+                    <DialogFooter className="px-6 py-4 border-t bg-muted/20">
                         <Button variant="outline" onClick={() => setShowEdit(false)}>Batal</Button>
-                        <Button onClick={handleEdit} disabled={isLoading}>Simpan</Button>
+                        <Button onClick={handleEdit} disabled={isLoading}>Simpan Perubahan</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
