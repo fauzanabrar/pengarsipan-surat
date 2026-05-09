@@ -364,43 +364,52 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                             isActive={isActive}
                                         >
                                             <div className="mt-3 text-sm space-y-4">
-                                                {/* The main note for this stage (Only show if has content or is editable) */}
-                                                {(hasNoteValue || canEditStep) && (
-                                                    <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm transition-all hover:bg-muted/20">
-                                                        <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                                                            <FileText className="h-3 w-3" /> Catatan / Keterangan
-                                                        </h5>
-                                                        <PREditableNote 
-                                                            prId={pr.id} 
-                                                            field={step.noteField} 
-                                                            initialValue={step.noteValue ?? null} 
-                                                            canEdit={canEditStep} 
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                {/* Rendered files */}
-                                                {step.hasFile && (
-                                                    <div className="space-y-2">
-                                                        {step.fileRenderer()}
-                                                    </div>
-                                                )}
-                                                
-                                                {/* Approved Badge (only if passed this step and no file was uploaded) */}
-                                                {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.hasFile && step.index !== 6 && (
-                                                    <ApprovedBadge />
-                                                )}
-
                                                 {/* Exception Badge (Reject/Revision) */}
-                                                {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === step.index && exceptionLogId && (
-                                                    <StatusBadge 
-                                                        prId={pr.id} 
-                                                        logId={exceptionLogId} 
-                                                        status={pr.status as any} 
-                                                        notes={exceptionNotes} 
-                                                        canEdit={canEditException} 
-                                                    />
-                                                )}
+                                                {(() => {
+                                                    const isExceptionActive = (pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === step.index && exceptionLogId;
+                                                    
+                                                    return (
+                                                        <>
+                                                            {/* The main note for this stage (Only show if has content or is editable AND no exception is active) */}
+                                                            {(hasNoteValue || canEditStep) && !isExceptionActive && (
+                                                                <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm transition-all hover:bg-muted/20">
+                                                                    <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                                                        <FileText className="h-3 w-3" /> Catatan / Keterangan
+                                                                    </h5>
+                                                                    <PREditableNote 
+                                                                        prId={pr.id} 
+                                                                        field={step.noteField} 
+                                                                        initialValue={step.noteValue ?? null} 
+                                                                        canEdit={canEditStep} 
+                                                                    />
+                                                                </div>
+                                                            )}
+
+                                                            {/* Rendered files */}
+                                                            {step.hasFile && (
+                                                                <div className="space-y-2">
+                                                                    {step.fileRenderer()}
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {/* Approved Badge (only if passed this step and no file was uploaded) */}
+                                                            {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.hasFile && step.index !== 6 && (
+                                                                <ApprovedBadge />
+                                                            )}
+
+                                                            {/* Exception Badge */}
+                                                            {isExceptionActive && (
+                                                                <StatusBadge 
+                                                                    prId={pr.id} 
+                                                                    logId={exceptionLogId} 
+                                                                    status={pr.status as any} 
+                                                                    notes={exceptionNotes} 
+                                                                    canEdit={canEditException} 
+                                                                />
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
 
                                                 {/* Thread Activity Logs */}
                                                 {stepLogs.length > 0 && (
