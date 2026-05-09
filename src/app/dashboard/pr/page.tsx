@@ -65,9 +65,9 @@ export default async function PRQueuePage({
     const whereFilters: (SQL | undefined)[] = [];
     
     // Visibility filter (role-based access)
-    // For GA_STAFF in "todo" view, they see items pending their action + their own submissions
-    // For GA_STAFF in "all" view, they see everything
-    if (userRole === 'GA_STAFF' && view === 'todo') {
+    if (view === 'mine') {
+        whereFilters.push(eq(purchaseRequests.requesterId, userId));
+    } else if (userRole === 'GA_STAFF' && view === 'todo') {
         const ownRequests = eq(purchaseRequests.requesterId, userId);
         if (actionRequired) {
             whereFilters.push(or(ownRequests, actionRequired));
@@ -178,6 +178,13 @@ export default async function PRQueuePage({
                             >
                                 <History className="h-3.5 w-3.5" />
                                 <span>Semua</span>
+                            </Link>
+                            <Link 
+                                href={getLinkWithParams('mine')}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all whitespace-nowrap ${view === 'mine' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <User className="h-3.5 w-3.5" />
+                                <span>Pengajuan Saya</span>
                             </Link>
                             <Link 
                                 href={getLinkWithParams('todo')}
