@@ -52,15 +52,15 @@ const ACTION_LABELS: Record<string, string> = {
 // --- Sub-components ---
 
 const TimelineStep = ({ id, title, isActive, isCompleted, children }: { id?: string, title: string, isActive: boolean, isCompleted: boolean, children?: React.ReactNode }) => (
-    <div id={id} className="flex gap-4 relative pb-8 last:pb-0 scroll-mt-20">
+    <div id={id} className="flex gap-4 relative pb-5 last:pb-0 scroll-mt-20">
         <div className="flex flex-col items-center">
             <div className="z-10 bg-background">
-                {isCompleted ? <CheckCircle2 className="h-6 w-6 text-green-500" /> : isActive ? <Clock className="h-6 w-6 text-primary" /> : <Circle className="h-6 w-6 text-muted-foreground" />}
+                {isCompleted ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : isActive ? <Clock className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
             </div>
-            <div className="absolute top-6 bottom-0 left-3 w-px bg-border -z-0"></div>
+            <div className="absolute top-5 bottom-0 left-2.5 w-px bg-border -z-0"></div>
         </div>
-        <div className={`flex-1 pt-0.5 ${!isActive && !isCompleted ? 'opacity-50' : ''}`}>
-            <h4 className="font-semibold">{title}</h4>
+        <div className={`flex-1 pt-0 ${!isActive && !isCompleted ? 'opacity-50' : ''}`}>
+            <h4 className="text-sm font-bold">{title}</h4>
             {children}
         </div>
     </div>
@@ -264,18 +264,15 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                     )}
 
                     <Card className="shadow-sm border-muted/20">
-                        <CardHeader className="border-b border-muted/20 pb-4">
+                        <CardHeader className="py-2 pb-0">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
-                                    <History className="h-5 w-5" />
+                                <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500">
+                                    <History className="h-4 w-4" />
                                 </div>
-                                <div>
-                                    <CardTitle>Alur Pengadaan</CardTitle>
-                                    <CardDescription>Lacak tahapan dokumen pengadaan ini.</CardDescription>
-                                </div>
+                                <CardTitle className="text-sm font-bold">Alur Pengadaan</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="pt-2">
+                        <CardContent className="pt-0 pb-2">
                             <div className="pl-2">
                                 {WORKFLOW_STEP_CONFIG.map((step) => {
                                     const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
@@ -293,7 +290,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
                                     return (
                                         <TimelineStep key={step.index} id={`step-${step.index}`} title={step.title} isCompleted={isCompleted} isActive={isActive}>
-                                            <div className="mt-3 text-sm space-y-4">
+                                    <div className="mt-1 text-[15px] space-y-3">
                                                 {isActive && (
                                                     <div className={`p-4 rounded-lg border transition-all duration-300 ${canActionAtActiveStep ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 shadow-sm animate-in fade-in slide-in-from-top-1' : 'bg-muted/20 border-dashed border-muted-foreground/20'}`}>
                                                         <div className="w-full mb-2"><h5 className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${canActionAtActiveStep ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{canActionAtActiveStep ? <><AlertCircle className="h-3 w-3" /> Tindakan Diperlukan</> : <><Clock className="h-3 w-3" /> Status</>}</h5></div>
@@ -316,20 +313,20 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                     <StatusBadge prId={pr.id} logId={exceptionLog.log.id} status={pr.status as any} notes={exceptionLog.log.notes} canEdit={exceptionLog.log.actorId === session.user.id || session.user.role === 'GA_MANAGER'} />
                                                 )}
                                                 {stepLogs.length > 0 && (
-                                                    <div className="pt-3 pb-1">
-                                                        <div className="flex items-center justify-between mb-4"><h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Riwayat Aktivitas</h5></div>
-                                                        <div className="space-y-5 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/60">
+                                                    <div className="pt-2 pb-1">
+                                                        <div className="flex items-center justify-between mb-2"><h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Riwayat Aktivitas</h5></div>
+                                                        <div className="space-y-3 relative before:absolute before:inset-y-0 before:left-2.5 before:w-px before:bg-border/60">
                                                             {stepLogs.map(({ log, actor }) => {
                                                                 const isRevisionFix = logIsRevisionFix.get(log.id) || (step.index === 5 && logStepMapping.get(log.id) === 4);
                                                                 return (
-                                                                    <div key={log.id} className="flex gap-3 items-center relative z-10">
-                                                                        <Avatar className="h-6 w-6 border bg-background ring-4 ring-background"><AvatarFallback className="text-[9px] font-bold text-primary bg-primary/10">{(actor?.name || 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                                                                    <div key={log.id} className="flex gap-2.5 items-center relative z-10">
+                                                                        <Avatar className="h-5 w-5 border bg-background ring-2 ring-background transition-transform"><AvatarFallback className="text-[8px] font-bold text-primary bg-primary/10">{(actor?.name || 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                                                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                                                                             <div className="flex items-center gap-2 truncate">
-                                                                                <p className="text-[13px] leading-relaxed text-foreground/90 truncate"><span className="font-bold">{actor?.name || 'Sistem'}</span> <span className="text-muted-foreground">{isRevisionFix ? 'telah merevisi dokumen' : getActionLabel(log)}</span></p>
-                                                                                {isRevisionFix && step.index !== 4 && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-sm shrink-0"><History className="h-2.5 w-2.5" /> Direvisi</span>}
+                                                                                <p className="text-[14px] leading-relaxed text-foreground/90 truncate"><span className="font-bold">{actor?.name || 'Sistem'}</span> <span className="text-muted-foreground">{isRevisionFix ? 'telah merevisi dokumen' : getActionLabel(log)}</span></p>
+                                                                                {isRevisionFix && step.index !== 4 && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-sm shrink-0">Direvisi</span>}
                                                                             </div>
-                                                                            <span className="text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md tabular-nums">{new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                                                            <span className="text-[11px] font-bold text-green-700 bg-green-50 border border-green-200 dark:text-green-300 dark:bg-green-900/30 dark:border-green-900/50 px-2 py-0.5 rounded-md tabular-nums whitespace-nowrap">{new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -349,10 +346,10 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                     <Card className="overflow-hidden border-none shadow-xl bg-gradient-to-b from-card to-muted/20">
                         <div className="h-1.5 w-full bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
                         <CardHeader><CardTitle className="text-lg font-bold">Informasi Pengajuan</CardTitle></CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="space-y-4 pt-4">
                             {[ 
                                 { l: 'Judul Pengajuan', v: pr.title, b: true, i: <FileText className="h-4 w-4" /> }, 
-                                { l: 'Total Anggaran', v: formatCurrency(totalAmount), highlighted: true, i: <ReceiptText className="h-4 w-4" /> },
+                                ...(items.length > 0 ? [{ l: 'Total Anggaran', v: formatCurrency(totalAmount), highlighted: true, i: <ReceiptText className="h-4 w-4" /> }] : []),
                                 { l: 'ID Pengajuan', v: pr.id, m: true, i: <div className="h-4 w-4 flex items-center justify-center text-[10px] font-black border border-current rounded-sm">ID</div> }, 
                                 { l: 'Status', component: <div className="pt-1"><PRStatusBadge status={pr.status} /></div>, i: <Clock className="h-4 w-4" /> }, 
                                 { l: 'Pemohon', v: requester?.name || requester?.username, i: <User className="h-4 w-4" /> }, 

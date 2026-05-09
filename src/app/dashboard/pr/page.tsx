@@ -193,7 +193,7 @@ export default async function PRQueuePage({
                                 <TableSortHeader label="Judul" field="title" currentSort={sort} currentOrder={order} icon={<FileText className="h-3.5 w-3.5" />} />
                             </TableHead>
                             <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[140px]">
-                                <TableSortHeader label="Pengaju" field="name" currentSort={sort} currentOrder={order} icon={<User className="h-3.5 w-3.5" />} />
+                                <TableSortHeader label="Pemohon" field="name" currentSort={sort} currentOrder={order} icon={<User className="h-3.5 w-3.5" />} />
                             </TableHead>
                             <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[110px]">
                                 <TableSortHeader label="Cabang" field="location" currentSort={sort} currentOrder={order} icon={<MapPin className="h-3.5 w-3.5" />} />
