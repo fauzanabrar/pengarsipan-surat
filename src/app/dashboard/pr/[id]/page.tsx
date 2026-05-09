@@ -45,8 +45,8 @@ const ApprovedBadge = () => (
 );
 
 const RevisedBadge = ({ count }: { count: number }) => (
-    <div className="inline-flex items-center gap-1.5 px-2 py-1 mt-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-md">
-        <History className="h-3.5 w-3.5" />
+    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-md">
+        <History className="h-3 w-3" />
         Telah Direvisi {count > 1 ? `(${count}x)` : ''}
     </div>
 );
@@ -342,7 +342,10 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                 ].map((step) => {
                                     const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
                                     const isActive = activeIndex === step.index && pr.status !== 'COMPLETED';
-                                    const stepLogs = logs.filter(({ log }) => logStepMapping.get(log.id) === step.index);
+                                    const isStepReached = activeIndex >= step.index || pr.status === 'COMPLETED';
+                                    const canEditStep = step.canEdit && pr.status !== 'COMPLETED' && isStepReached;
+                                    const hasNoteValue = step.noteValue && step.noteValue.trim().length > 0;
+
                                     const isSystemNote = (note: string | null) => {
                                         if (!note) return true;
                                         const systemNotes = [
@@ -359,9 +362,17 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                         return systemNotes.includes(note) || note.startsWith('Updated file') || note.startsWith('Mengubah keterangan:');
                                     };
 
-                                    const isStepReached = activeIndex >= step.index || pr.status === 'COMPLETED';
-                                    const canEditStep = step.canEdit && pr.status !== 'COMPLETED' && isStepReached;
-                                    const hasNoteValue = step.noteValue && step.noteValue.trim().length > 0;
+                                    const stepLogs = logs.filter(({ log }) => {
+                                        const mappedIdx = logStepMapping.get(log.id);
+                                        // Special case: Step 5 (Verifikasi) should also show the fixes performed in Step 4
+                                        if (step.index === 5 && mappedIdx === 4) {
+                                            const isFix = (log.action !== 'REVISION' && log.action !== 'REJECT') && logs.some(({log: l}) => 
+                                                logStepMapping.get(l.id) === 5 && (l.action === 'REVISION' || l.action === 'REJECT') && new Date(l.createdAt) < new Date(log.createdAt)
+                                            );
+                                            if (isFix) return true;
+                                        }
+                                        return mappedIdx === step.index;
+                                    });
 
                                     return (
                                         <TimelineStep 
@@ -404,15 +415,6 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                                 <ApprovedBadge />
                                                             )}
 
-                                                            {/* Revised Badge (Shows if this step had any revisions in the past) */}
-                                                            {(() => {
-                                                                const revisionCount = stepLogs.filter(l => l.log.action === 'REVISION' || l.log.action === 'REJECT').length;
-                                                                if (revisionCount > 0 && !isExceptionActive) {
-                                                                    return <RevisedBadge count={revisionCount} />;
-                                                                }
-                                                                return null;
-                                                            })()}
-
                                                             {/* Exception Badge */}
                                                             {isExceptionActive && (
                                                                 <StatusBadge 
@@ -430,12 +432,31 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                 {/* Thread Activity Logs */}
                                                 {stepLogs.length > 0 && (
                                                     <div className="pt-3 pb-1">
-                                                        <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-1.5">
-                                                            <History className="h-3 w-3" /> Riwayat Aktivitas
-                                                        </h5>
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                                                                <History className="h-3 w-3" /> Riwayat Aktivitas
+                                                            </h5>
+                                                            {/* RevisedBadge removed from header per user request */}
+                                                        </div>
                                                         <div className="space-y-5 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/60">
-                                                            {stepLogs.map(({ log, actor }) => {
+                                                            {stepLogs.map(({ log, actor }, idx) => {
                                                                 const isSystem = isSystemNote(log.notes);
+                                                                const isRevisionFix = (log.action !== 'REVISION' && log.action !== 'REJECT') && (
+                                                                    // Case 1: Revision was requested in the same step
+                                                                    stepLogs.slice(idx + 1).some(l => l.log.action === 'REVISION' || l.log.action === 'REJECT') ||
+                                                                    // Case 2: Revision was requested in the next step (e.g., Step 5 requested a fix for Step 4)
+                                                                    logs.some(({ log: l }) => 
+                                                                        logStepMapping.get(l.id) === step.index + 1 && 
+                                                                        (l.action === 'REVISION' || l.action === 'REJECT') && 
+                                                                        new Date(l.createdAt) < new Date(log.createdAt)
+                                                                    ) ||
+                                                                    // Case 3: This log is actually a Step 4 fix being shown in Step 5
+                                                                    (step.index === 5 && logStepMapping.get(log.id) === 4)
+                                                                );
+                                                                
+
+                                                                const actionLabel = isRevisionFix ? 'telah merevisi dokumen' : getActionLabel(log);
+                                                                
                                                                 return (
                                                                     <div key={log.id} className="flex gap-3 items-center relative z-10">
                                                                         <Avatar className="h-6 w-6 border bg-background ring-4 ring-background">
@@ -444,10 +465,17 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                                             </AvatarFallback>
                                                                         </Avatar>
                                                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                                                                            <p className="text-[13px] leading-relaxed text-foreground/90 truncate">
-                                                                                <span className="font-bold">{actor?.name || 'Sistem'}</span>{' '}
-                                                                                <span className="text-muted-foreground">{getActionLabel(log)}</span>
-                                                                            </p>
+                                                                            <div className="flex items-center gap-2 truncate">
+                                                                                <p className="text-[13px] leading-relaxed text-foreground/90 truncate">
+                                                                                    <span className="font-bold">{actor?.name || 'Sistem'}</span>{' '}
+                                                                                    <span className="text-muted-foreground">{actionLabel}</span>
+                                                                                </p>
+                                                                                {isRevisionFix && step.index !== 4 && (
+                                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-sm shrink-0">
+                                                                                        <History className="h-2.5 w-2.5" /> Direvisi
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
                                                                             <span className="text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md whitespace-nowrap shadow-sm">
                                                                                 {new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
                                                                             </span>
