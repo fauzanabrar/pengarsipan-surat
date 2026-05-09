@@ -229,6 +229,8 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
     });
 
     const exceptionLog = logs.find(l => l.log.action === 'REJECT' || l.log.action === 'REVISION');
+    const completionLog = logs.find(l => l.log.action === 'COMPLETE');
+
 
     const workflowSteps = [
         { title: "1. Permohonan Diajukan (CABANG)", index: 0, noteField: "keteranganPengajuan" as const, noteValue: pr.keteranganPengajuan, canEdit: pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER', fileRenderer: () => renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'), hasFile: !!pr.suratCabangUrl },
@@ -352,9 +354,46 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                     <Card>
                         <CardHeader><CardTitle>Informasi Pengajuan</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="space-y-1"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Pengajuan</p><p className="text-sm font-mono font-medium">{pr.id}</p></div>
-                            <div className="space-y-1"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p><PRStatusBadge status={pr.status} /></div>
-                            <div className="space-y-1"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cabang</p><p className="text-sm font-medium">{requester?.location || 'Tidak diketahui'}</p></div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Judul Pengajuan</p>
+                                <p className="text-sm font-bold">{pr.title}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Pengajuan</p>
+                                <p className="text-sm font-mono font-medium">{pr.id}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p>
+                                <PRStatusBadge status={pr.status} />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pemohon</p>
+                                <p className="text-sm font-medium">{requester?.name || requester?.username}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cabang</p>
+                                <p className="text-sm font-medium">{requester?.location || 'Tidak diketahui'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Waktu Pengajuan</p>
+                                <p className="text-sm font-medium">
+                                    {new Date(pr.createdAt).toLocaleString('id-ID', { 
+                                        dateStyle: 'medium', 
+                                        timeStyle: 'short' 
+                                    })}
+                                </p>
+                            </div>
+                            {pr.status === 'COMPLETED' && completionLog && (
+                                <div className="space-y-1">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Waktu Selesai</p>
+                                    <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                                        {new Date(completionLog.log.createdAt).toLocaleString('id-ID', { 
+                                            dateStyle: 'medium', 
+                                            timeStyle: 'short' 
+                                        })}
+                                    </p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
