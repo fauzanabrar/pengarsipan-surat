@@ -7,10 +7,7 @@ import { purchaseRequests } from '@/db/schema';
  * GA_STAFF/GA_MANAGER: Can see all requests in the system.
  */
 export function getVisibilityConditions(userId: string, userRole: string): SQL {
-    if (userRole === 'CABANG') {
-        return eq(purchaseRequests.requesterId, userId);
-    }
-    // GA_MANAGER and GA_STAFF can see everything
+    // All roles can now see everything in the system
     return undefined as unknown as SQL;
 }
 
