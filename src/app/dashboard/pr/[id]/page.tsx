@@ -18,13 +18,13 @@ import { ScrollToActive } from './scroll-to-active';
 // --- Types & Config ---
 
 const WORKFLOW_STEP_CONFIG = [
-    { title: "1. Permohonan Diajukan (CABANG)", index: 0, noteField: "keteranganPengajuan" as const, fileLabel: 'Surat Permohonan Cabang', fileField: 'suratCabangUrl' },
-    { title: "2. Gambar & Desain (GA STAFF)", index: 1, noteField: "keteranganGambar" as const, fileLabel: 'Gambar / Desain Perencanaan', fileField: 'gambarUrl' },
-    { title: "3. Pembuatan RAB (GA STAFF)", index: 2, noteField: "keteranganRab" as const, fileLabel: 'Dokumen RAB (Rencana Anggaran Biaya)', fileField: 'rabUrl' },
-    { title: "4. Approval GA Manager", index: 3, noteField: "keteranganGaManager" as const, fileLabel: 'Approval GA Manager', fileField: 'gaManagerApprovalUrl' },
-    { title: "5. Upload PR Approved (CABANG)", index: 4, noteField: "keteranganPr" as const, fileLabel: 'Dokumen Purchase Request Final', fileField: 'prUrl' },
-    { title: "6. Verifikasi Spesifikasi (GA STAFF)", index: 5, noteField: "keteranganVerifikasi" as const, fileLabel: 'Dokumen Verifikasi', fileField: 'verifikasiUrls', isMulti: true },
-    { title: "7. Selesai / Pengadaan", index: 6, noteField: "keteranganSelesai" as const, fileLabel: '', fileField: '', isFinal: true }
+    { title: "1. Inisiasi Permohonan", index: 0, noteField: "keteranganPengajuan" as const, fileLabel: 'Surat Permohonan Cabang', fileField: 'suratCabangUrl' },
+    { title: "2. Perencanaan Gambar & Desain", index: 1, noteField: "keteranganGambar" as const, fileLabel: 'Gambar / Desain Perencanaan', fileField: 'gambarUrl' },
+    { title: "3. Penyusunan Anggaran (RAB)", index: 2, noteField: "keteranganRab" as const, fileLabel: 'Dokumen RAB (Rencana Anggaran Biaya)', fileField: 'rabUrl' },
+    { title: "4. Persetujuan Manager GA", index: 3, noteField: "keteranganGaManager" as const, fileLabel: 'Approval GA Manager', fileField: 'gaManagerApprovalUrl' },
+    { title: "5. Pengunggahan Dokumen PR", index: 4, noteField: "keteranganPr" as const, fileLabel: 'Dokumen Purchase Request Final', fileField: 'prUrl' },
+    { title: "6. Verifikasi Spesifikasi Teknis", index: 5, noteField: "keteranganVerifikasi" as const, fileLabel: 'Dokumen Verifikasi', fileField: 'verifikasiUrls', isMulti: true },
+    { title: "7. Penyelesaian & Pengadaan", index: 6, noteField: "keteranganSelesai" as const, fileLabel: '', fileField: '', isFinal: true }
 ];
 
 const WAITING_MESSAGES: Record<string, string> = {
