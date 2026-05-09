@@ -10,7 +10,8 @@ import {
     verifikasiSpesifikasi,
     selesaikanPengadaan,
     rejectPurchaseRequest,
-    requestRevision
+    requestRevision,
+    deletePurchaseRequest
 } from '@/features/pr/actions';
 import { toast } from 'sonner';
 import {
@@ -32,6 +33,7 @@ interface PRActionButtonsProps {
     prId: string;
     status: string;
     userRole: 'CABANG' | 'GA_STAFF' | 'GA_MANAGER';
+    isOwner?: boolean;
 }
 
 interface RABItem {
@@ -40,7 +42,7 @@ interface RABItem {
     price: string;
 }
 
-export function PRActionButtons({ prId, status, userRole }: PRActionButtonsProps) {
+export function PRActionButtons({ prId, status, userRole, isOwner }: PRActionButtonsProps) {
     const [isLoading, setIsLoading] = useState(false);
     
     // Upload state for dialogs
@@ -61,6 +63,7 @@ export function PRActionButtons({ prId, status, userRole }: PRActionButtonsProps
     const [showComplete, setShowComplete] = useState(false);
     const [showReject, setShowReject] = useState(false);
     const [showRevision, setShowRevision] = useState(false);
+    const [showDeletePR, setShowDeletePR] = useState(false);
 
     const resetState = () => {
         setSelectedFile(null);
@@ -119,16 +122,34 @@ export function PRActionButtons({ prId, status, userRole }: PRActionButtonsProps
             if (status === 'PENDING_GA_MANAGER') actions.push({ label: 'Approval Manager', onClick: () => setShowApproveManager(true) });
         }
 
-        if (userRole === 'CABANG') {
-            if (status === 'PENDING_CABANG_PR' || status === 'REVISION') {
+        if (status === 'PENDING_CABANG_PR' || status === 'REVISION') {
+            if (isOwner) {
                 actions.push({ label: 'Upload PR Approved', onClick: () => setShowSubmitPR(true) });
             }
         }
 
         // Add Reject/Revision for staff and manager
         if (userRole !== 'CABANG' && !['COMPLETED', 'REJECTED'].includes(status)) {
-            actions.push({ label: 'Minta Revisi', onClick: () => setShowRevision(true), variant: 'outline' });
-            actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive' });
+            // Minta Revisi is NOT available for Gambar, RAB, or Manager Approval stages
+            if (!['PENDING_GAMBAR', 'PENDING_RAB', 'PENDING_GA_MANAGER'].includes(status)) {
+                actions.push({ label: 'Minta Revisi', onClick: () => setShowRevision(true), variant: 'outline' });
+            }
+            // Tolak is NOT available for Gambar or RAB stages
+            // Also, during GA Manager Approval and PR Upload stages, only the GA_MANAGER can reject
+            if (!['PENDING_GAMBAR', 'PENDING_RAB'].includes(status)) {
+                if (['PENDING_GA_MANAGER', 'PENDING_CABANG_PR'].includes(status)) {
+                    if (userRole === 'GA_MANAGER') {
+                        actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive' });
+                    }
+                } else {
+                    actions.push({ label: 'Tolak', onClick: () => setShowReject(true), variant: 'destructive' });
+                }
+            }
+        }
+
+        // Only owner can delete the PR and only during the first step
+        if (isOwner && status === 'PENDING_GAMBAR') {
+            actions.push({ label: 'Hapus Pengajuan', onClick: () => setShowDeletePR(true), variant: 'destructive' });
         }
 
         return actions;
@@ -381,6 +402,25 @@ export function PRActionButtons({ prId, status, userRole }: PRActionButtonsProps
                             if (!keterangan.trim()) throw new Error("Mohon berikan detail revisi");
                             await requestRevision(prId, keterangan);
                         }, "Permintaan revisi telah dikirim", setShowRevision)} disabled={isLoading}>Minta Revisi</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            {/* Delete PR Dialog */}
+            <Dialog open={showDeletePR} onOpenChange={setShowDeletePR}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive flex items-center gap-2"><Trash2 className="h-5 w-5" /> Hapus Pengajuan</DialogTitle>
+                        <DialogDescription>
+                            Apakah Anda yakin ingin menghapus seluruh pengajuan ini? 
+                            Semua data dan file terkait akan dihapus secara permanen.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeletePR(false)} disabled={isLoading}>Batal</Button>
+                        <Button variant="destructive" onClick={() => handleAction(async () => {
+                            await deletePurchaseRequest(prId);
+                            window.location.href = '/dashboard/pr';
+                        }, "Pengajuan telah dihapus", setShowDeletePR)} disabled={isLoading}>Hapus Permanen</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

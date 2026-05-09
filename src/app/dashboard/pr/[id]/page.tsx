@@ -9,6 +9,8 @@ import { PRStatusBadge } from '@/features/pr/components/status-badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ExternalLink, FileText, CheckCircle2, Circle, Clock, ReceiptText, AlertCircle } from 'lucide-react';
+import { PRFileActions } from './file-actions';
+import { PREditableNote, PREditableStatusNote } from './note-actions';
 
 const TimelineStep = ({ title, isActive, isCompleted, children }: { title: string, isActive: boolean, isCompleted: boolean, children?: React.ReactNode }) => {
     return (
@@ -40,7 +42,7 @@ const ApprovedBadge = () => (
     </div>
 );
 
-const StatusBadge = ({ status, notes }: { status: 'REJECTED' | 'REVISION', notes?: string | null }) => (
+const StatusBadge = ({ prId, logId, status, notes, canEdit }: { prId: string, logId: string, status: 'REJECTED' | 'REVISION', notes?: string | null, canEdit: boolean }) => (
     <div className={`mt-2 p-3 rounded-md border text-sm space-y-1 ${
         status === 'REJECTED' 
         ? 'bg-destructive/10 border-destructive/20 text-red-700 dark:text-red-400 dark:bg-destructive/20 dark:border-destructive/30' 
@@ -50,9 +52,7 @@ const StatusBadge = ({ status, notes }: { status: 'REJECTED' | 'REVISION', notes
             <AlertCircle className="h-4 w-4" />
             {status === 'REJECTED' ? 'Permohonan Ditolak' : 'Menunggu Revisi'}
         </div>
-        {notes && (
-            <p className="text-xs opacity-90 pl-6">{notes}</p>
-        )}
+        <PREditableStatusNote prId={prId} logId={logId} initialValue={notes ?? null} canEdit={canEdit} />
     </div>
 );
 
@@ -88,20 +88,30 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
     const { pr, requester } = prData;
     const isPending = pr.status.startsWith('PENDING_') || pr.status === 'REVISION';
 
-    const renderFileLink = (url: string | null, label: string, key?: string) => {
+    const renderFileLink = (url: string | null, label: string, field: string, canEdit: boolean, canDelete: boolean = false, key?: string) => {
         if (!url) return null;
         
         return (
-            <div key={key} className="flex items-center gap-3 p-3 mt-2 bg-muted/50 border rounded-md">
+            <div key={key} className="flex items-center gap-3 p-3 mt-2 bg-muted/50 border rounded-md group/file">
                 <FileText className="h-5 w-5 text-primary shrink-0" />
-                <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-primary hover:underline flex-1 truncate"
-                >
-                    {label}
-                </a>
+                <div className="flex-1 min-w-0">
+                    <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-primary hover:underline block truncate"
+                    >
+                        {label}
+                    </a>
+                </div>
+                
+                <PRFileActions 
+                    prId={pr.id} 
+                    field={field} 
+                    canEdit={canEdit && pr.status !== 'COMPLETED'} 
+                    canDelete={canDelete && pr.status !== 'COMPLETED'} 
+                />
+
                 <Button variant="secondary" size="sm" className="gap-2 shrink-0" asChild>
                     <Link href={url} target="_blank" rel="noopener noreferrer">
                         <span className="hidden sm:inline">Lihat File</span>
@@ -112,10 +122,10 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
         );
     };
 
-    const renderMultiFiles = (urls: string | null, labelPrefix: string) => {
+    const renderMultiFiles = (urls: string | null, labelPrefix: string, field: string, canEdit: boolean) => {
         if (!urls) return null;
         const urlList = urls.split(',').filter(Boolean);
-        return urlList.map((url, idx) => renderFileLink(url, `${labelPrefix} ${idx + 1}`, `file-${idx}`));
+        return urlList.map((url, idx) => renderFileLink(url, `${labelPrefix} ${idx + 1}`, field, canEdit, true, `file-${idx}`));
     };
 
     const formatCurrency = (amount: string | number) => {
@@ -154,6 +164,8 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
     // Determine the most recent reject/revision note
     const exceptionLog = logs.find(l => l.log.action === 'REJECT' || l.log.action === 'REVISION');
     const exceptionNotes = exceptionLog?.log.notes;
+    const exceptionLogId = exceptionLog?.log.id;
+    const canEditException = exceptionLog?.log.actorId === session.user.id || session.user.role === 'GA_MANAGER';
 
     return (
         <div className="flex-1 space-y-6 p-8 pt-6 max-w-5xl mx-auto">
@@ -177,7 +189,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                         <h4 className="font-semibold text-sm text-primary">Tindakan Diperlukan</h4>
                         <p className="text-xs text-muted-foreground">Status saat ini: {pr.status.replace(/_/g, ' ')}.</p>
                     </div>
-                    <PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role as 'CABANG' | 'GA_STAFF' | 'GA_MANAGER'} />
+                    <PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role as any} isOwner={pr.requesterId === session.user.id} />
                 </div>
             )}
 
@@ -196,15 +208,14 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     isActive={activeIndex === 0 && pr.status !== 'COMPLETED'}
                                 >
                                     <div className="mt-2 text-sm space-y-2">
-                                        {pr.keteranganPengajuan && (
-                                            <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                                                {pr.keteranganPengajuan}
-                                            </p>
-                                        )}
-                                        {renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang')}
+                                        <PREditableNote 
+                                            prId={pr.id} field="keteranganPengajuan" initialValue={pr.keteranganPengajuan ?? null} 
+                                            canEdit={(pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
+                                        />
+                                        {renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', session.user.role === 'CABANG' || session.user.role === 'GA_MANAGER')}
                                         {(activeIndex > 0 || pr.status === 'COMPLETED') && !pr.suratCabangUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 0 && (
-                                            <StatusBadge status={pr.status as 'REJECTED' | 'REVISION'} notes={exceptionNotes} />
+                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 0 && exceptionLogId && (
+                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
                                         )}
                                     </div>
                                 </TimelineStep>
@@ -215,15 +226,14 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     isActive={activeIndex === 1 && pr.status !== 'COMPLETED'}
                                 >
                                     <div className="mt-2 text-sm space-y-2">
-                                        {pr.keteranganGambar && (
-                                            <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                                                {pr.keteranganGambar}
-                                            </p>
-                                        )}
-                                        {renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan')}
+                                        <PREditableNote 
+                                            prId={pr.id} field="keteranganGambar" initialValue={pr.keteranganGambar ?? null} 
+                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
+                                        />
+                                        {renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan', 'gambarUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER')}
                                         {(activeIndex > 1 || pr.status === 'COMPLETED') && !pr.gambarUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 1 && (
-                                            <StatusBadge status={pr.status as 'REJECTED' | 'REVISION'} notes={exceptionNotes} />
+                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 1 && exceptionLogId && (
+                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
                                         )}
                                     </div>
                                 </TimelineStep>
@@ -234,15 +244,14 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     isActive={activeIndex === 2 && pr.status !== 'COMPLETED'}
                                 >
                                     <div className="mt-2 text-sm space-y-2">
-                                        {pr.keteranganRab && (
-                                            <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                                                {pr.keteranganRab}
-                                            </p>
-                                        )}
-                                        {renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)')}
+                                        <PREditableNote 
+                                            prId={pr.id} field="keteranganRab" initialValue={pr.keteranganRab ?? null} 
+                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
+                                        />
+                                        {renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)', 'rabUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER')}
                                         {(activeIndex > 2 || pr.status === 'COMPLETED') && !pr.rabUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 2 && (
-                                            <StatusBadge status={pr.status as 'REJECTED' | 'REVISION'} notes={exceptionNotes} />
+                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 2 && exceptionLogId && (
+                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
                                         )}
                                     </div>
                                 </TimelineStep>
@@ -253,15 +262,14 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     isActive={activeIndex === 3 && pr.status !== 'COMPLETED'}
                                 >
                                     <div className="mt-2 text-sm space-y-2">
-                                        {pr.keteranganGaManager && (
-                                            <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                                                {pr.keteranganGaManager}
-                                            </p>
-                                        )}
-                                        {renderFileLink(pr.gaManagerApprovalUrl, 'Approval GA Manager')}
+                                        <PREditableNote 
+                                            prId={pr.id} field="keteranganGaManager" initialValue={pr.keteranganGaManager ?? null} 
+                                            canEdit={(session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
+                                        />
+                                        {renderFileLink(pr.gaManagerApprovalUrl, 'Approval GA Manager', 'gaManagerApprovalUrl', session.user.role === 'GA_MANAGER')}
                                         {(activeIndex > 3 || pr.status === 'COMPLETED') && !pr.gaManagerApprovalUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 3 && (
-                                            <StatusBadge status={pr.status as 'REJECTED' | 'REVISION'} notes={exceptionNotes} />
+                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 3 && exceptionLogId && (
+                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
                                         )}
                                     </div>
                                 </TimelineStep>
@@ -272,15 +280,14 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     isActive={activeIndex === 4 && pr.status !== 'COMPLETED'}
                                 >
                                     <div className="mt-2 text-sm space-y-2">
-                                        {pr.keteranganPr && (
-                                            <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                                                {pr.keteranganPr}
-                                            </p>
-                                        )}
-                                        {renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final')}
+                                        <PREditableNote 
+                                            prId={pr.id} field="keteranganPr" initialValue={pr.keteranganPr ?? null} 
+                                            canEdit={(pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
+                                        />
+                                        {renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final', 'prUrl', session.user.role === 'CABANG' || session.user.role === 'GA_MANAGER')}
                                         {(activeIndex > 4 || pr.status === 'COMPLETED') && !pr.prUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 4 && (
-                                            <StatusBadge status={pr.status as 'REJECTED' | 'REVISION'} notes={exceptionNotes} />
+                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 4 && exceptionLogId && (
+                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
                                         )}
                                     </div>
                                 </TimelineStep>
@@ -291,15 +298,14 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     isActive={activeIndex === 5 && pr.status !== 'COMPLETED'}
                                 >
                                     <div className="mt-2 text-sm space-y-2">
-                                        {pr.keteranganVerifikasi && (
-                                            <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                                                {pr.keteranganVerifikasi}
-                                            </p>
-                                        )}
-                                        {renderMultiFiles(pr.verifikasiUrls, 'Dokumen Verifikasi')}
+                                        <PREditableNote 
+                                            prId={pr.id} field="keteranganVerifikasi" initialValue={pr.keteranganVerifikasi ?? null} 
+                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
+                                        />
+                                        {renderMultiFiles(pr.verifikasiUrls, 'Dokumen Verifikasi', 'verifikasiUrls', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER')}
                                         {(activeIndex > 5 || pr.status === 'COMPLETED') && !pr.verifikasiUrls && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 5 && (
-                                            <StatusBadge status={pr.status as 'REJECTED' | 'REVISION'} notes={exceptionNotes} />
+                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 5 && exceptionLogId && (
+                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
                                         )}
                                     </div>
                                 </TimelineStep>
@@ -310,13 +316,12 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     isActive={activeIndex === 6 && pr.status !== 'COMPLETED'}
                                 >
                                     <div className="mt-2 text-sm space-y-2">
-                                        {pr.keteranganSelesai && (
-                                            <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                                                {pr.keteranganSelesai}
-                                            </p>
-                                        )}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 6 && (
-                                            <StatusBadge status={pr.status as 'REJECTED' | 'REVISION'} notes={exceptionNotes} />
+                                        <PREditableNote 
+                                            prId={pr.id} field="keteranganSelesai" initialValue={pr.keteranganSelesai ?? null} 
+                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
+                                        />
+                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 6 && exceptionLogId && (
+                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
                                         )}
                                     </div>
                                 </TimelineStep>

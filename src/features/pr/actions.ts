@@ -195,8 +195,10 @@ export async function submitPRCabang(
 ) {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
-    // Ideally only the original requester can submit this, but CABANG role is enough for now
-    if (session.user.role !== 'CABANG') throw new Error('Only CABANG can perform this action');
+    // Allow the original requester to submit this
+    const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, prId));
+    if (!pr) throw new Error('PR not found');
+    if (pr.requesterId !== session.user.id) throw new Error('Only the original requester can perform this action');
 
     await db.transaction(async (tx) => {
         const [updatedPr] = await tx.update(purchaseRequests)
@@ -366,6 +368,62 @@ export async function requestRevision(prId: string, notes: string) {
     });
 
     revalidatePath('/dashboard/pr');
+    revalidatePath(`/dashboard/pr/${prId}`);
+}
+
+export async function deletePurchaseRequest(prId: string) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+
+    const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, prId));
+    if (!pr) throw new Error('PR not found');
+
+    // Only requester or GA_MANAGER can delete
+    if (pr.requesterId !== session.user.id && session.user.role !== 'GA_MANAGER') {
+        throw new Error('You do not have permission to delete this PR');
+    }
+
+    await db.delete(purchaseRequests).where(eq(purchaseRequests.id, prId));
+    
+    revalidatePath('/dashboard/pr');
+}
+
+export async function updatePRField(prId: string, field: string, value: string | null, notes?: string) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+
+    await db.transaction(async (tx) => {
+        const updateData: any = { 
+            [field]: value,
+            updatedAt: new Date()
+        };
+
+        await tx.update(purchaseRequests)
+            .set(updateData)
+            .where(eq(purchaseRequests.id, prId));
+
+        await tx.insert(approvalLogs).values({
+            prId,
+            actorId: session.user.id!,
+            action: 'UPDATE_FILE',
+            notes: notes || `Updated file: ${field}`,
+        });
+    });
+
+    revalidatePath('/dashboard/pr');
+    revalidatePath(`/dashboard/pr/${prId}`);
+}
+
+export async function updateLogNote(logId: string, prId: string, notes: string) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+
+    await db.update(approvalLogs)
+        .set({ 
+            notes,
+        })
+        .where(eq(approvalLogs.id, logId));
+
     revalidatePath(`/dashboard/pr/${prId}`);
 }
 
