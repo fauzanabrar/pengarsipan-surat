@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { ExternalLink, FileText, CheckCircle2, Circle, Clock, ReceiptText, AlertCircle } from 'lucide-react';
 import { PRFileActions } from './file-actions';
 import { PREditableNote, PREditableStatusNote } from './note-actions';
+import { BreadcrumbSetter } from '@/components/breadcrumb-setter';
 
 const TimelineStep = ({ title, isActive, isCompleted, children }: { title: string, isActive: boolean, isCompleted: boolean, children?: React.ReactNode }) => {
     return (
@@ -170,6 +171,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
     return (
         <div className="flex-1 space-y-6 p-8 pt-6 max-w-5xl mx-auto">
+            <BreadcrumbSetter title={pr.title} />
             <div className="flex items-center justify-between space-y-2">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">{pr.title}</h2>

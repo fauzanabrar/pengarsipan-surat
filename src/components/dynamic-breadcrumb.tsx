@@ -9,7 +9,9 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
+
+import { breadcrumbStore } from '@/store/breadcrumb-store';
 
 const routeMap: Record<string, string> = {
     dashboard: 'Dashboard',
@@ -22,6 +24,8 @@ const routeMap: Record<string, string> = {
 
 export function DynamicBreadcrumb() {
     const pathname = usePathname();
+    const dynamicTitle = useSyncExternalStore(breadcrumbStore.subscribe, breadcrumbStore.getTitle, breadcrumbStore.getTitle);
+    
     const allPaths = pathname.split('/').filter(Boolean);
     
     // If the first path is 'dashboard' and there are more paths, we can skip the 'dashboard' prefix
@@ -55,13 +59,18 @@ export function DynamicBreadcrumb() {
                     const href = `/${fullPaths.join('/')}`;
                     const isLast = index === paths.length - 1;
                     
-                    const label = routeMap[path] || path.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                    let label = routeMap[path] || path.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                    
+                    // Override label if it's the last item and we have a dynamic title
+                    if (isLast && dynamicTitle) {
+                        label = dynamicTitle;
+                    }
 
                     return (
                         <React.Fragment key={path}>
                             <BreadcrumbItem>
                                 {isLast ? (
-                                    <BreadcrumbPage>{label}</BreadcrumbPage>
+                                    <BreadcrumbPage className="line-clamp-1 max-w-[200px] sm:max-w-[400px] break-all">{label}</BreadcrumbPage>
                                 ) : (
                                     <BreadcrumbLink href={href}>{label}</BreadcrumbLink>
                                 )}
