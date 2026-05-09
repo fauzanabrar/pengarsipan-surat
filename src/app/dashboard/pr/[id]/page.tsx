@@ -150,7 +150,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
     const logStepMapping = new Map<string, number>();
     const logIsRevisionFix = new Map<string, boolean>();
     let inferredStep = 0;
-    
+
     [...logs].reverse().forEach(({ log }) => {
         if (log.action === 'AJUKAN') inferredStep = 0;
         else if (log.action === 'UPLOAD_GAMBAR') inferredStep = 1;
@@ -159,7 +159,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
         else if (log.action === 'SUBMIT_PR') inferredStep = 4;
         else if (log.action === 'VERIFIKASI') inferredStep = 5;
         else if (log.action === 'COMPLETE') inferredStep = 6;
-        
+
         let stepIdx = inferredStep;
         if (log.action === 'UPDATE_FILE' && log.notes) {
             const nl = log.notes.toLowerCase();
@@ -202,11 +202,11 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
             <div key={key} className="flex items-center gap-3 p-3 mt-2 bg-muted/50 border rounded-md group/file">
                 <FileText className="h-5 w-5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0"><a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline block truncate">{label}</a></div>
-                <PRFileActions 
-                    prId={pr.id} 
-                    field={field} 
-                    canEdit={canEdit && pr.status !== 'COMPLETED'} 
-                    canDelete={canDelete && pr.status !== 'COMPLETED'} 
+                <PRFileActions
+                    prId={pr.id}
+                    field={field}
+                    canEdit={canEdit && pr.status !== 'COMPLETED'}
+                    canDelete={canDelete && pr.status !== 'COMPLETED'}
                     initialRabItems={field === 'rabUrl' ? items : undefined}
                 />
                 <Button variant="secondary" size="sm" className="gap-2 shrink-0" asChild><Link href={url} target="_blank" rel="noopener noreferrer"><span className="hidden sm:inline">Lihat File</span><ExternalLink className="h-4 w-4" /></Link></Button>
@@ -234,17 +234,17 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <ReceiptText className="h-4 w-4 text-primary" />
-                                        <CardTitle className="text-sm font-bold text-foreground">Item Pengadaan (RAB)</CardTitle>
+                                        <CardTitle className="text-sm font-bold text-foreground">Rencana Anggaran Biaya (RAB)</CardTitle>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="text-right">
                                             <p className="text-[14px] font-black text-primary tabular-nums">{formatCurrency(totalAmount)}</p>
                                         </div>
-                                        <PRActionButtons 
-                                            prId={pr.id} 
-                                            status={pr.status} 
-                                            userRole={session.user.role as any} 
-                                            isOwner={pr.requesterId === session.user.id} 
+                                        <PRActionButtons
+                                            prId={pr.id}
+                                            status={pr.status}
+                                            userRole={session.user.role as any}
+                                            isOwner={pr.requesterId === session.user.id}
                                             initialRabItems={items}
                                             initialRabUrl={pr.rabUrl}
                                             initialRabNotes={pr.keteranganRab}
@@ -312,10 +312,10 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     const isActive = activeIndex === step.index && pr.status !== 'COMPLETED';
                                     const isStepReached = activeIndex >= step.index || pr.status === 'COMPLETED';
                                     const stepValue = (pr as any)[step.noteField];
-                                    const canEditStep = (step.index === 0 || step.index === 4) 
+                                    const canEditStep = (step.index === 0 || step.index === 4)
                                         ? (pr.requesterId === session.user.id || (session.user.role as string) === 'GA_MANAGER')
                                         : ((session.user.role as string) === 'GA_STAFF' || (session.user.role as string) === 'GA_MANAGER');
-                                    
+
                                     // Allow editing RAB even when in Manager Approval stage (for GA STAFF only)
                                     const isRabEditInManagerStage = step.index === 2 && pr.status === 'PENDING_GA_MANAGER';
                                     const canEditThisNow = (canEditStep && pr.status !== 'COMPLETED' && isStepReached) || (isRabEditInManagerStage && (session.user.role as string) === 'GA_STAFF');
@@ -326,28 +326,28 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
                                     return (
                                         <TimelineStep key={step.index} id={`step-${step.index}`} title={step.title} isCompleted={isCompleted} isActive={isActive}>
-                                    <div className="mt-1 text-[15px] space-y-3">
+                                            <div className="mt-1 text-[15px] space-y-3">
                                                 {isActive && (
                                                     <div className={`p-4 rounded-lg border transition-all duration-300 ${canActionAtActiveStep ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 shadow-sm animate-in fade-in slide-in-from-top-1' : 'bg-muted/20 border-dashed border-muted-foreground/20'}`}>
                                                         <div className="w-full mb-2"><h5 className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${canActionAtActiveStep ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{canActionAtActiveStep ? <><AlertCircle className="h-3 w-3" /> Tindakan Diperlukan</> : <><Clock className="h-3 w-3" /> Status</>}</h5></div>
                                                         {canActionAtActiveStep ? (
-                                                             <div className="flex flex-wrap items-center gap-3">
-                                                                 <PRActionButtons 
-                                                                     prId={pr.id} 
-                                                                     status={pr.status} 
-                                                                     userRole={session.user.role as any} 
-                                                                     isOwner={pr.requesterId === session.user.id} 
-                                                                     initialRabItems={items}
-                                                                     initialRabUrl={pr.rabUrl}
-                                                                     initialRabNotes={pr.keteranganRab}
-                                                                 />
-                                                             </div>
-                                                         ) : (
+                                                            <div className="flex flex-wrap items-center gap-3">
+                                                                <PRActionButtons
+                                                                    prId={pr.id}
+                                                                    status={pr.status}
+                                                                    userRole={session.user.role as any}
+                                                                    isOwner={pr.requesterId === session.user.id}
+                                                                    initialRabItems={items}
+                                                                    initialRabUrl={pr.rabUrl}
+                                                                    initialRabNotes={pr.keteranganRab}
+                                                                />
+                                                            </div>
+                                                        ) : (
                                                             <div className="flex items-center gap-2 text-muted-foreground"><div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-pulse" /><p className="text-sm italic">{WAITING_MESSAGES[pr.status] || 'Proses sedang berjalan ke tahap berikutnya.'}</p></div>
                                                         )}
                                                     </div>
                                                 )}
-                                                {(stepValue || canEditThisNow) && !( (pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog) && (
+                                                {(stepValue || canEditThisNow) && !((pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog) && (
                                                     <div className="bg-muted/10 border border-border/60 p-3 rounded-lg">
                                                         <div className="flex items-center gap-2 mb-1.5 opacity-60">
                                                             <FileText className="h-3.5 w-3.5" />
@@ -356,7 +356,7 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                         <PREditableNote prId={pr.id} field={step.noteField} initialValue={stepValue ?? null} canEdit={canEditThisNow} />
                                                     </div>
                                                 )}
-                                                {step.fileField && (step.isMulti ? (pr as any)[step.fileField]?.split(',').filter(Boolean).map((u: string, i: number) => renderFile(u, `${step.fileLabel} ${i+1}`, step.fileField, canEditThisNow, true, `f-${step.index}-${i}`)) : renderFile((pr as any)[step.fileField], step.fileLabel, step.fileField, canEditThisNow))}
+                                                {step.fileField && (step.isMulti ? (pr as any)[step.fileField]?.split(',').filter(Boolean).map((u: string, i: number) => renderFile(u, `${step.fileLabel} ${i + 1}`, step.fileField, canEditThisNow, true, `f-${step.index}-${i}`)) : renderFile((pr as any)[step.fileField], step.fileLabel, step.fileField, canEditThisNow))}
                                                 {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.fileField && !step.isFinal && <ApprovedBadge />}
                                                 {(pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog && (
                                                     <StatusBadge prId={pr.id} logId={exceptionLog.log.id} status={pr.status as any} notes={exceptionLog.log.notes} canEdit={exceptionLog.log.actorId === session.user.id || session.user.role === 'GA_MANAGER'} />
@@ -396,14 +396,14 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                         <div className="h-1.5 w-full bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
                         <CardHeader><CardTitle className="text-lg font-bold">Informasi Pengajuan</CardTitle></CardHeader>
                         <CardContent className="space-y-4 pt-4">
-                            {[ 
-                                { l: 'Judul Pengajuan', v: pr.title, b: true, i: <FileText className="h-4 w-4" /> }, 
+                            {[
+                                { l: 'Judul Pengajuan', v: pr.title, b: true, i: <FileText className="h-4 w-4" /> },
                                 ...(items.length > 0 ? [{ l: 'Total Anggaran', v: formatCurrency(totalAmount), highlighted: true, i: <ReceiptText className="h-4 w-4" /> }] : []),
-                                { l: 'ID Pengajuan', v: pr.id, m: true, i: <div className="h-4 w-4 flex items-center justify-center text-[10px] font-black border border-current rounded-sm">ID</div> }, 
-                                { l: 'Status', component: <div className="pt-1"><PRStatusBadge status={pr.status} /></div>, i: <Clock className="h-4 w-4" /> }, 
-                                { l: 'Pemohon', v: requester?.name || requester?.username, i: <User className="h-4 w-4" /> }, 
-                                { l: 'Cabang', v: requester?.location || 'Tidak diketahui', i: <MapPin className="h-4 w-4" /> }, 
-                                { l: 'Waktu Pengajuan', v: new Date(pr.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }), i: <CalendarDays className="h-4 w-4" /> } 
+                                { l: 'ID Pengajuan', v: pr.id, m: true, i: <div className="h-4 w-4 flex items-center justify-center text-[10px] font-black border border-current rounded-sm">ID</div> },
+                                { l: 'Status', component: <div className="pt-1"><PRStatusBadge status={pr.status} /></div>, i: <Clock className="h-4 w-4" /> },
+                                { l: 'Pemohon', v: requester?.name || requester?.username, i: <User className="h-4 w-4" /> },
+                                { l: 'Cabang', v: requester?.location || 'Tidak diketahui', i: <MapPin className="h-4 w-4" /> },
+                                { l: 'Waktu Pengajuan', v: new Date(pr.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }), i: <CalendarDays className="h-4 w-4" /> }
                             ].map((info, i) => (
                                 <div key={i} className="flex gap-4">
                                     <div className="mt-1 p-2 rounded-lg bg-muted text-muted-foreground/70 shrink-0">
@@ -412,12 +412,11 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                     <div className="space-y-1 min-w-0">
                                         <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">{info.l}</p>
                                         {info.component || (
-                                            <p className={`text-sm truncate ${
-                                                info.highlighted ? 'text-xl font-black text-primary tracking-tight' : 
-                                                info.b ? 'font-bold' : 
-                                                info.m ? 'font-mono text-[12px] bg-muted/50 px-1.5 py-0.5 rounded' : 
-                                                'font-medium'
-                                            }`}>
+                                            <p className={`text-sm truncate ${info.highlighted ? 'text-xl font-black text-primary tracking-tight' :
+                                                info.b ? 'font-bold' :
+                                                    info.m ? 'font-mono text-[12px] bg-muted/50 px-1.5 py-0.5 rounded' :
+                                                        'font-medium'
+                                                }`}>
                                                 {info.v}
                                             </p>
                                         )}
