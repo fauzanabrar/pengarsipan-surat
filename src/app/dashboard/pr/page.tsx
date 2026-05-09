@@ -58,29 +58,20 @@ export default async function PRQueuePage({
     const sort = typeof resolvedSearchParams.sort === 'string' ? resolvedSearchParams.sort : 'createdAt';
     const order = typeof resolvedSearchParams.order === 'string' ? resolvedSearchParams.order as 'asc' | 'desc' : 'desc';
 
-    // Determine conditions based on view
+    // Determine common access conditions
     const visibility = getVisibilityConditions(userId, userRole);
     const actionRequired = getActionRequiredConditions(userId, userRole);
+    const ownRequests = eq(purchaseRequests.requesterId, userId);
 
+    // 1. Where Filters (for the main table, depends on 'view' tab)
     const whereFilters: (SQL | undefined)[] = [];
-    
-    // Visibility filter (role-based access)
     if (view === 'mine') {
-        whereFilters.push(eq(purchaseRequests.requesterId, userId));
+        whereFilters.push(ownRequests);
     } else if (userRole === 'GA_STAFF' && view === 'todo') {
-        const ownRequests = eq(purchaseRequests.requesterId, userId);
-        if (actionRequired) {
-            whereFilters.push(or(ownRequests, actionRequired));
-        } else {
-            whereFilters.push(ownRequests);
-        }
+        whereFilters.push(actionRequired ? or(ownRequests, actionRequired) : ownRequests);
     } else {
         if (visibility) whereFilters.push(visibility);
-
-        // View filter (Inbox vs History)
-        if (view === 'todo' && actionRequired) {
-            whereFilters.push(actionRequired);
-        }
+        if (view === 'todo' && actionRequired) whereFilters.push(actionRequired);
     }
 
     if (query) {
@@ -95,15 +86,10 @@ export default async function PRQueuePage({
         whereFilters.push(eq(purchaseRequests.status, statusFilter as any));
     }
 
-    // Count for badge (only for "todo" view)
+    // 2. Count Filters (for the "Perlu Diproses" badge, always acts like view='todo')
     const countFilters: SQL[] = [];
     if (userRole === 'GA_STAFF') {
-        const ownRequests = eq(purchaseRequests.requesterId, userId);
-        if (actionRequired) {
-            countFilters.push(or(ownRequests, actionRequired) as SQL);
-        } else {
-            countFilters.push(ownRequests);
-        }
+        countFilters.push((actionRequired ? or(ownRequests, actionRequired) : ownRequests) as SQL);
     } else {
         if (visibility) countFilters.push(visibility);
         if (actionRequired) countFilters.push(actionRequired);

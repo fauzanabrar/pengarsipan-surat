@@ -205,129 +205,109 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                         </CardHeader>
                         <CardContent className="pt-4">
                             <div className="pl-2">
-                                <TimelineStep 
-                                    title="1. Permohonan Diajukan (CABANG)" 
-                                    isCompleted={activeIndex > 0 || pr.status === 'COMPLETED'} 
-                                    isActive={activeIndex === 0 && pr.status !== 'COMPLETED'}
-                                >
-                                    <div className="mt-2 text-sm space-y-2">
-                                        <PREditableNote 
-                                            prId={pr.id} field="keteranganPengajuan" initialValue={pr.keteranganPengajuan ?? null} 
-                                            canEdit={(pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
-                                        />
-                                        {renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', (pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'))}
-                                        {(activeIndex > 0 || pr.status === 'COMPLETED') && !pr.suratCabangUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 0 && exceptionLogId && (
-                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
-                                        )}
-                                    </div>
-                                </TimelineStep>
+                                {[
+                                    {
+                                        title: "1. Permohonan Diajukan (CABANG)",
+                                        index: 0,
+                                        noteField: "keteranganPengajuan" as const,
+                                        noteValue: pr.keteranganPengajuan,
+                                        canEdit: pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER',
+                                        fileRenderer: () => renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'),
+                                        hasFile: !!pr.suratCabangUrl,
+                                    },
+                                    {
+                                        title: "2. Gambar & Desain (GA STAFF)",
+                                        index: 1,
+                                        noteField: "keteranganGambar" as const,
+                                        noteValue: pr.keteranganGambar,
+                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
+                                        fileRenderer: () => renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan', 'gambarUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'),
+                                        hasFile: !!pr.gambarUrl,
+                                    },
+                                    {
+                                        title: "3. Pembuatan RAB (GA STAFF)",
+                                        index: 2,
+                                        noteField: "keteranganRab" as const,
+                                        noteValue: pr.keteranganRab,
+                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
+                                        fileRenderer: () => renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)', 'rabUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'),
+                                        hasFile: !!pr.rabUrl,
+                                    },
+                                    {
+                                        title: "4. Approval GA Manager",
+                                        index: 3,
+                                        noteField: "keteranganGaManager" as const,
+                                        noteValue: pr.keteranganGaManager,
+                                        canEdit: session.user.role === 'GA_MANAGER',
+                                        fileRenderer: () => renderFileLink(pr.gaManagerApprovalUrl, 'Approval GA Manager', 'gaManagerApprovalUrl', session.user.role === 'GA_MANAGER'),
+                                        hasFile: !!pr.gaManagerApprovalUrl,
+                                    },
+                                    {
+                                        title: "5. Upload PR Approved (CABANG)",
+                                        index: 4,
+                                        noteField: "keteranganPr" as const,
+                                        noteValue: pr.keteranganPr,
+                                        canEdit: pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER',
+                                        fileRenderer: () => renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final', 'prUrl', pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'),
+                                        hasFile: !!pr.prUrl,
+                                    },
+                                    {
+                                        title: "6. Verifikasi Spesifikasi (GA STAFF)",
+                                        index: 5,
+                                        noteField: "keteranganVerifikasi" as const,
+                                        noteValue: pr.keteranganVerifikasi,
+                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
+                                        fileRenderer: () => renderMultiFiles(pr.verifikasiUrls, 'Dokumen Verifikasi', 'verifikasiUrls', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'),
+                                        hasFile: !!pr.verifikasiUrls,
+                                    },
+                                    {
+                                        title: "7. Selesai / Pengadaan",
+                                        index: 6,
+                                        noteField: "keteranganSelesai" as const,
+                                        noteValue: pr.keteranganSelesai,
+                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
+                                        fileRenderer: () => null,
+                                        hasFile: true, // Special case: no file needed to show approved badge, but we don't show badge here anyway.
+                                    }
+                                ].map((step) => {
+                                    const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
+                                    const isActive = activeIndex === step.index && pr.status !== 'COMPLETED';
+                                    
+                                    return (
+                                        <TimelineStep 
+                                            key={step.index}
+                                            title={step.title} 
+                                            isCompleted={isCompleted} 
+                                            isActive={isActive}
+                                        >
+                                            <div className="mt-2 text-sm space-y-2">
+                                                <PREditableNote 
+                                                    prId={pr.id} 
+                                                    field={step.noteField} 
+                                                    initialValue={step.noteValue ?? null} 
+                                                    canEdit={step.canEdit && pr.status !== 'COMPLETED'} 
+                                                />
+                                                {step.fileRenderer()}
+                                                
+                                                {/* Approved Badge (only if passed this step and no file was uploaded) */}
+                                                {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.hasFile && step.index !== 6 && (
+                                                    <ApprovedBadge />
+                                                )}
 
-                                <TimelineStep 
-                                    title="2. Gambar & Desain (GA STAFF)" 
-                                    isCompleted={activeIndex > 1 || pr.status === 'COMPLETED'} 
-                                    isActive={activeIndex === 1 && pr.status !== 'COMPLETED'}
-                                >
-                                    <div className="mt-2 text-sm space-y-2">
-                                        <PREditableNote 
-                                            prId={pr.id} field="keteranganGambar" initialValue={pr.keteranganGambar ?? null} 
-                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
-                                        />
-                                        {renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan', 'gambarUrl', (session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'))}
-                                        {(activeIndex > 1 || pr.status === 'COMPLETED') && !pr.gambarUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 1 && exceptionLogId && (
-                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
-                                        )}
-                                    </div>
-                                </TimelineStep>
-
-                                <TimelineStep 
-                                    title="3. Pembuatan RAB (GA STAFF)" 
-                                    isCompleted={activeIndex > 2 || pr.status === 'COMPLETED'} 
-                                    isActive={activeIndex === 2 && pr.status !== 'COMPLETED'}
-                                >
-                                    <div className="mt-2 text-sm space-y-2">
-                                        <PREditableNote 
-                                            prId={pr.id} field="keteranganRab" initialValue={pr.keteranganRab ?? null} 
-                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
-                                        />
-                                        {renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)', 'rabUrl', (session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'))}
-                                        {(activeIndex > 2 || pr.status === 'COMPLETED') && !pr.rabUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 2 && exceptionLogId && (
-                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
-                                        )}
-                                    </div>
-                                </TimelineStep>
-
-                                <TimelineStep 
-                                    title="4. Approval GA Manager" 
-                                    isCompleted={activeIndex > 3 || pr.status === 'COMPLETED'} 
-                                    isActive={activeIndex === 3 && pr.status !== 'COMPLETED'}
-                                >
-                                    <div className="mt-2 text-sm space-y-2">
-                                        <PREditableNote 
-                                            prId={pr.id} field="keteranganGaManager" initialValue={pr.keteranganGaManager ?? null} 
-                                            canEdit={(session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
-                                        />
-                                        {renderFileLink(pr.gaManagerApprovalUrl, 'Approval GA Manager', 'gaManagerApprovalUrl', session.user.role === 'GA_MANAGER')}
-                                        {(activeIndex > 3 || pr.status === 'COMPLETED') && !pr.gaManagerApprovalUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 3 && exceptionLogId && (
-                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
-                                        )}
-                                    </div>
-                                </TimelineStep>
-
-                                <TimelineStep 
-                                    title="5. Upload PR Approved (CABANG)" 
-                                    isCompleted={activeIndex > 4 || pr.status === 'COMPLETED'} 
-                                    isActive={activeIndex === 4 && pr.status !== 'COMPLETED'}
-                                >
-                                    <div className="mt-2 text-sm space-y-2">
-                                        <PREditableNote 
-                                            prId={pr.id} field="keteranganPr" initialValue={pr.keteranganPr ?? null} 
-                                            canEdit={(pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
-                                        />
-                                        {renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final', 'prUrl', (pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'))}
-                                        {(activeIndex > 4 || pr.status === 'COMPLETED') && !pr.prUrl && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 4 && exceptionLogId && (
-                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
-                                        )}
-                                    </div>
-                                </TimelineStep>
-
-                                <TimelineStep 
-                                    title="6. Verifikasi Spesifikasi (GA STAFF)" 
-                                    isCompleted={activeIndex > 5 || pr.status === 'COMPLETED'} 
-                                    isActive={activeIndex === 5 && pr.status !== 'COMPLETED'}
-                                >
-                                    <div className="mt-2 text-sm space-y-2">
-                                        <PREditableNote 
-                                            prId={pr.id} field="keteranganVerifikasi" initialValue={pr.keteranganVerifikasi ?? null} 
-                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
-                                        />
-                                        {renderMultiFiles(pr.verifikasiUrls, 'Dokumen Verifikasi', 'verifikasiUrls', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER')}
-                                        {(activeIndex > 5 || pr.status === 'COMPLETED') && !pr.verifikasiUrls && <ApprovedBadge />}
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 5 && exceptionLogId && (
-                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
-                                        )}
-                                    </div>
-                                </TimelineStep>
-
-                                <TimelineStep 
-                                    title="7. Selesai / Pengadaan" 
-                                    isCompleted={pr.status === 'COMPLETED'} 
-                                    isActive={activeIndex === 6 && pr.status !== 'COMPLETED'}
-                                >
-                                    <div className="mt-2 text-sm space-y-2">
-                                        <PREditableNote 
-                                            prId={pr.id} field="keteranganSelesai" initialValue={pr.keteranganSelesai ?? null} 
-                                            canEdit={(session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER') && pr.status !== 'COMPLETED'} 
-                                        />
-                                        {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === 6 && exceptionLogId && (
-                                            <StatusBadge prId={pr.id} logId={exceptionLogId} status={pr.status as any} notes={exceptionNotes} canEdit={canEditException} />
-                                        )}
-                                    </div>
-                                </TimelineStep>
+                                                {/* Exception Badge (Reject/Revision) */}
+                                                {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === step.index && exceptionLogId && (
+                                                    <StatusBadge 
+                                                        prId={pr.id} 
+                                                        logId={exceptionLogId} 
+                                                        status={pr.status as any} 
+                                                        notes={exceptionNotes} 
+                                                        canEdit={canEditException} 
+                                                    />
+                                                )}
+                                            </div>
+                                        </TimelineStep>
+                                    );
+                                })}
                             </div>
                         </CardContent>
                     </Card>
