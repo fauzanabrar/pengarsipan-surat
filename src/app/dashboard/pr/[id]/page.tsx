@@ -73,8 +73,11 @@ const ApprovedBadge = () => (
 );
 
 const StatusBadge = ({ prId, logId, status, notes, canEdit }: { prId: string, logId: string, status: 'REJECTED' | 'REVISION', notes?: string | null, canEdit: boolean }) => (
-    <div className={`mt-2 p-3 rounded-md border text-sm space-y-1 ${status === 'REJECTED' ? 'bg-destructive/10 border-destructive/20 text-red-700 dark:text-red-400 dark:bg-destructive/20 dark:border-destructive/30' : 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-900/50 dark:text-yellow-300'}`}>
-        <div className="flex items-center gap-2 font-semibold"><AlertCircle className="h-4 w-4" />{status === 'REJECTED' ? 'Permohonan Ditolak' : 'Menunggu Revisi'}</div>
+    <div className={`mt-2 p-3 rounded-lg border ${status === 'REJECTED' ? 'bg-red-50/50 border-red-200' : 'bg-amber-50/50 border-amber-200'}`}>
+        <div className={`flex items-center gap-2 mb-1.5 font-bold text-[12px] ${status === 'REJECTED' ? 'text-red-700' : 'text-amber-700'}`}>
+            <AlertCircle className="h-3.5 w-3.5" />
+            {status === 'REJECTED' ? 'Permohonan Ditolak' : 'Permintaan Revisi'}
+        </div>
         <PREditableStatusNote prId={prId} logId={logId} initialValue={notes ?? null} canEdit={canEdit} />
     </div>
 );
@@ -302,8 +305,11 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                     </div>
                                                 )}
                                                 {(stepValue || canEditThisNow) && !( (pr.status === 'REJECTED' || pr.status === 'REVISION') && isActive && exceptionLog) && (
-                                                    <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm">
-                                                        <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Catatan / Keterangan</h5>
+                                                    <div className="bg-muted/10 border border-border/60 p-3 rounded-lg">
+                                                        <div className="flex items-center gap-2 mb-1.5 opacity-60">
+                                                            <FileText className="h-3.5 w-3.5" />
+                                                            <span className="text-[10px] font-bold uppercase tracking-widest">Keterangan</span>
+                                                        </div>
                                                         <PREditableNote prId={pr.id} field={step.noteField} initialValue={stepValue ?? null} canEdit={canEditThisNow} />
                                                     </div>
                                                 )}

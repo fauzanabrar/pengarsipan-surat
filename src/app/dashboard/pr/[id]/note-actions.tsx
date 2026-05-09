@@ -24,8 +24,8 @@ export function PREditableNote({ prId, field, initialValue, canEdit }: PRNoteAct
     if (!isEditing) {
         return (
             <div className="group/note relative">
-                <p className="text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary min-h-[3rem]">
-                    {initialValue || <span className="italic opacity-50">Tidak ada keterangan</span>}
+                <p className="text-[14px] text-foreground leading-relaxed">
+                    {initialValue || <span className="italic text-muted-foreground/50">Tidak ada keterangan</span>}
                 </p>
                 {canEdit && (
                     <Button
@@ -90,8 +90,8 @@ export function PREditableStatusNote({ prId, logId, initialValue, canEdit }: PRS
     if (!isEditing) {
         return (
             <div className="group/note relative">
-                <p className="text-xs opacity-90 pl-6">
-                    {initialValue || <span className="italic opacity-50">Tidak ada alasan</span>}
+                <p className="text-[13px] text-foreground leading-relaxed pl-6">
+                    {initialValue || <span className="italic text-muted-foreground/50">Tidak ada alasan</span>}
                 </p>
                 {canEdit && (
                     <Button
