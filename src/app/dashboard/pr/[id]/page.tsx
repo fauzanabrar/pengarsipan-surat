@@ -28,13 +28,13 @@ const WORKFLOW_STEP_CONFIG = [
 ];
 
 const WAITING_MESSAGES: Record<string, string> = {
-    'PENDING_GAMBAR': 'GA Staff sedang menyiapkan gambar dan desain perencanaan.',
-    'PENDING_RAB': 'GA Staff sedang menyusun Rencana Anggaran Biaya (RAB).',
+    'PENDING_GAMBAR': 'Menunggu GA Staff menyiapkan gambar dan desain perencanaan.',
+    'PENDING_RAB': 'Menunggu GA Staff menyusun Rencana Anggaran Biaya (RAB).',
     'PENDING_GA_MANAGER': 'Menunggu tinjauan dan persetujuan dari GA Manager.',
-    'PENDING_CABANG_PR': 'Cabang sedang menyiapkan dan mengunggah dokumen PR Final.',
-    'PENDING_VERIFIKASI': 'GA Staff sedang memverifikasi spesifikasi dan kelengkapan dokumen.',
-    'PENDING_PENGADAAN': 'GA Staff sedang memproses penyelesaian akhir pengadaan.',
-    'REVISION': 'Pengaju sedang melakukan revisi atau perbaikan dokumen.',
+    'PENDING_CABANG_PR': 'Menunggu Cabang menyiapkan dan mengunggah dokumen PR Final.',
+    'PENDING_VERIFIKASI': 'Menunggu GA Staff memverifikasi spesifikasi dan kelengkapan dokumen.',
+    'PENDING_PENGADAAN': 'Menunggu GA Staff memproses penyelesaian akhir pengadaan.',
+    'REVISION': 'Menunggu Pemohon melakukan revisi atau perbaikan dokumen.',
 };
 
 const ACTION_LABELS: Record<string, string> = {
