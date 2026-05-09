@@ -26,8 +26,7 @@ export function RABItemEditor({ items, onChange }: RABItemEditorProps) {
     const [showBulkAdd, setShowBulkAdd] = useState(false);
 
     const updateItem = (index: number, field: keyof RABItem, value: string | number) => {
-        const newItems = [...items];
-        newItems[index] = { ...newItems[index], [field]: value } as RABItem;
+        const newItems = items.map((item, i) => i === index ? { ...item, [field]: value } : item) as RABItem[];
         onChange(newItems);
     };
 
@@ -46,13 +45,13 @@ export function RABItemEditor({ items, onChange }: RABItemEditorProps) {
             const parts = line.split(/[,;\t]/).map(p => p.trim());
             return {
                 name: parts[0] || 'Item Baru',
-                category: CATEGORIES.includes(parts[1] as any) ? parts[1] : 'Lainnya',
+                category: (CATEGORIES as any).includes(parts[1]) ? parts[1] as any : 'Lainnya',
                 quantity: parseInt(parts[2]) || 1,
-                price: parts[3] || '0'
+                price: parts[3]?.replace(/[^0-9]/g, '') || '0'
             };
         });
         
-        onChange([...items.filter(i => i.name !== ''), ...newItems]);
+        onChange([...items.filter(i => i.name.trim() !== ''), ...newItems]);
         setBulkInput("");
         setShowBulkAdd(false);
         toast.success(`${newItems.length} item berhasil ditambahkan`);

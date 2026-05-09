@@ -10,9 +10,10 @@ interface UniversalUploaderProps {
     onUrlEntered: (url: string) => void;
     currentMode: "file" | "url";
     onModeChange: (mode: "file" | "url") => void;
+    accept?: string;
 }
 
-export function UniversalUploader({ onFileSelected, onUrlEntered, currentMode, onModeChange }: UniversalUploaderProps) {
+export function UniversalUploader({ onFileSelected, onUrlEntered, currentMode, onModeChange, accept = ".pdf,application/pdf" }: UniversalUploaderProps) {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [url, setUrl] = useState("");
 
@@ -62,10 +63,10 @@ export function UniversalUploader({ onFileSelected, onUrlEntered, currentMode, o
                     <div className="relative flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-10 bg-muted/20 hover:bg-muted/50 transition-colors">
                         <UploadCloud className="h-10 w-10 text-muted-foreground mb-4" />
                         <p className="text-sm font-medium">Click to upload file</p>
-                        <p className="text-xs text-muted-foreground mt-1">PDF documents only</p>
+                        <p className="text-xs text-muted-foreground mt-1">{accept.includes('pdf') ? 'PDF documents only' : 'Select file'}</p>
                         <input
                             type="file"
-                            accept=".pdf,application/pdf"
+                            accept={accept}
                             className="absolute inset-0 opacity-0 cursor-pointer"
                             onChange={handleFileChange}
                         />

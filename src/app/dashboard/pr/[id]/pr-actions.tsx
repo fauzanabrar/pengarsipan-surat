@@ -237,6 +237,7 @@ export function PRActionButtons({
                             <UniversalUploader 
                                 currentMode={uploadMode} onModeChange={setUploadMode}
                                 onFileSelected={setSelectedFile} onUrlEntered={setEnteredUrl}
+                                accept="image/*,.pdf,application/pdf"
                             />
                             <div className="grid gap-2">
                                 <Label className="font-bold text-xs uppercase tracking-wider opacity-60">Keterangan Gambar</Label>
@@ -273,6 +274,7 @@ export function PRActionButtons({
                                 <UniversalUploader 
                                     currentMode={uploadMode} onModeChange={setUploadMode}
                                     onFileSelected={setSelectedFile} onUrlEntered={setEnteredUrl}
+                                    accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                                 />
                             </div>
                             

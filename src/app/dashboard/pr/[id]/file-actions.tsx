@@ -169,6 +169,7 @@ export function PRFileActions({ prId, field, canEdit, canDelete = false, initial
                                     onModeChange={setUploadMode}
                                     onFileSelected={setSelectedFile} 
                                     onUrlEntered={setEnteredUrl}
+                                    accept={field === 'rabUrl' ? ".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" : field === 'gambarUrl' ? "image/*,.pdf,application/pdf" : ".pdf,application/pdf"}
                                 />
                             </div>
                         </div>
