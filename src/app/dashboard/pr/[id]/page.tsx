@@ -44,6 +44,13 @@ const ApprovedBadge = () => (
     </div>
 );
 
+const RevisedBadge = ({ count }: { count: number }) => (
+    <div className="inline-flex items-center gap-1.5 px-2 py-1 mt-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-md">
+        <History className="h-3.5 w-3.5" />
+        Telah Direvisi {count > 1 ? `(${count}x)` : ''}
+    </div>
+);
+
 const StatusBadge = ({ prId, logId, status, notes, canEdit }: { prId: string, logId: string, status: 'REJECTED' | 'REVISION', notes?: string | null, canEdit: boolean }) => (
     <div className={`mt-2 p-3 rounded-md border text-sm space-y-1 ${
         status === 'REJECTED' 
@@ -396,6 +403,15 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                                                             {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.hasFile && step.index !== 6 && (
                                                                 <ApprovedBadge />
                                                             )}
+
+                                                            {/* Revised Badge (Shows if this step had any revisions in the past) */}
+                                                            {(() => {
+                                                                const revisionCount = stepLogs.filter(l => l.log.action === 'REVISION' || l.log.action === 'REJECT').length;
+                                                                if (revisionCount > 0 && !isExceptionActive) {
+                                                                    return <RevisedBadge count={revisionCount} />;
+                                                                }
+                                                                return null;
+                                                            })()}
 
                                                             {/* Exception Badge */}
                                                             {isExceptionActive && (
