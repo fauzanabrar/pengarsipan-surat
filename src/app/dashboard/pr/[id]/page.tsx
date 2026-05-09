@@ -44,13 +44,6 @@ const ApprovedBadge = () => (
     </div>
 );
 
-const RevisedBadge = ({ count }: { count: number }) => (
-    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-md">
-        <History className="h-3 w-3" />
-        Telah Direvisi {count > 1 ? `(${count}x)` : ''}
-    </div>
-);
-
 const StatusBadge = ({ prId, logId, status, notes, canEdit }: { prId: string, logId: string, status: 'REJECTED' | 'REVISION', notes?: string | null, canEdit: boolean }) => (
     <div className={`mt-2 p-3 rounded-md border text-sm space-y-1 ${
         status === 'REJECTED' 
@@ -81,10 +74,8 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
 
     if (!prData) return notFound();
 
-    // Items for RAB
     const items = await db.select().from(prItems).where(eq(prItems.prId, prId));
 
-    // Audit Trail / Tracking Logs
     const logs = await db.select({
         log: approvalLogs,
         actor: users,
@@ -97,125 +88,23 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
     const { pr, requester } = prData;
     const isPending = pr.status.startsWith('PENDING_') || pr.status === 'REVISION';
 
-    const renderFileLink = (url: string | null, label: string, field: string, canEdit: boolean, canDelete: boolean = false, key?: string) => {
-        if (!url) return null;
-        
-        return (
-            <div key={key} className="flex items-center gap-3 p-3 mt-2 bg-muted/50 border rounded-md group/file">
-                <FileText className="h-5 w-5 text-primary shrink-0" />
-                <div className="flex-1 min-w-0">
-                    <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-primary hover:underline block truncate"
-                    >
-                        {label}
-                    </a>
-                </div>
-                
-                <PRFileActions 
-                    prId={pr.id} 
-                    field={field} 
-                    canEdit={canEdit && pr.status !== 'COMPLETED'} 
-                    canDelete={canDelete && pr.status !== 'COMPLETED'} 
-                />
-
-                <Button variant="secondary" size="sm" className="gap-2 shrink-0" asChild>
-                    <Link href={url} target="_blank" rel="noopener noreferrer">
-                        <span className="hidden sm:inline">Lihat File</span>
-                        <ExternalLink className="h-4 w-4" />
-                    </Link>
-                </Button>
-            </div>
-        );
-    };
-
-    const renderMultiFiles = (urls: string | null, labelPrefix: string, field: string, canEdit: boolean) => {
-        if (!urls) return null;
-        const urlList = urls.split(',').filter(Boolean);
-        return urlList.map((url, idx) => renderFileLink(url, `${labelPrefix} ${idx + 1}`, field, canEdit, true, `file-${idx}`));
-    };
-
-    const formatCurrency = (amount: string | number) => {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-        }).format(Number(amount));
-    };
-
-    const totalAmount = items.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-
-    // Calculate active stage index based on current status
-    const getActiveIndex = (): number => {
-        const statusMap: Record<string, number> = {
-            'PENDING_GAMBAR': 1,
-            'PENDING_RAB': 2,
-            'PENDING_GA_MANAGER': 3,
-            'PENDING_CABANG_PR': 4,
-            'PENDING_VERIFIKASI': 5,
-            'PENDING_PENGADAAN': 6,
-            'COMPLETED': 7,
-        };
-
-        if (statusMap[pr.status]) return statusMap[pr.status];
-
-        // Handle REJECTED/REVISION (return index based on furthest completed field)
-        if (pr.verifikasiUrls || pr.keteranganVerifikasi) return 6;
-        if (pr.prUrl || pr.keteranganPr) return 5;
-        if (pr.gaManagerApprovalUrl || pr.keteranganGaManager) return 4;
-        if (pr.rabUrl || pr.keteranganRab) return 3;
-        if (pr.gambarUrl || pr.keteranganGambar) return 2;
-        return 1;
-    };
-    const activeIndex = getActiveIndex();
-
-    // Map logs to their respective steps
-    const logStepMapping = new Map<string, number>();
-    let inferredStep = 0;
-    
-    // Traverse from oldest to newest to reconstruct history
-    [...logs].reverse().forEach(({ log }) => {
-        if (log.action === 'AJUKAN') { inferredStep = 0; logStepMapping.set(log.id, 0); }
-        else if (log.action === 'UPLOAD_GAMBAR') { inferredStep = 1; logStepMapping.set(log.id, 1); }
-        else if (log.action === 'CREATE_RAB') { inferredStep = 2; logStepMapping.set(log.id, 2); }
-        else if (log.action === 'APPROVE_GA_MANAGER') { inferredStep = 3; logStepMapping.set(log.id, 3); }
-        else if (log.action === 'SUBMIT_PR') { inferredStep = 4; logStepMapping.set(log.id, 4); }
-        else if (log.action === 'VERIFIKASI') { inferredStep = 5; logStepMapping.set(log.id, 5); }
-        else if (log.action === 'COMPLETE') { inferredStep = 6; logStepMapping.set(log.id, 6); }
-        else if (log.action === 'UPDATE_FILE' && log.notes) {
-            if (log.notes.includes('suratCabang') || log.notes.includes('Pengajuan')) logStepMapping.set(log.id, 0);
-            else if (log.notes.includes('gambar') || log.notes.includes('Gambar')) logStepMapping.set(log.id, 1);
-            else if (log.notes.includes('rab') || log.notes.includes('Rab')) logStepMapping.set(log.id, 2);
-            else if (log.notes.includes('gaManager') || log.notes.includes('GaManager')) logStepMapping.set(log.id, 3);
-            else if (log.notes.includes('prUrl') || log.notes.includes('keteranganPr')) logStepMapping.set(log.id, 4);
-            else if (log.notes.includes('verifikasi') || log.notes.includes('Verifikasi')) logStepMapping.set(log.id, 5);
-            else if (log.notes.includes('Selesai')) logStepMapping.set(log.id, 6);
-            else logStepMapping.set(log.id, inferredStep);
-        } else if (log.action === 'REVISION' || log.action === 'REJECT') {
-            logStepMapping.set(log.id, Math.min(inferredStep + 1, 6));
-        } else {
-            logStepMapping.set(log.id, inferredStep);
-        }
-    });
-
     const getActionLabel = (log: typeof approvalLogs.$inferSelect) => {
         if (log.action === 'UPDATE_FILE') {
             if (!log.notes) return 'memperbarui data';
-            if (log.notes.includes('suratCabang')) return 'mengubah file Surat Permohonan';
-            if (log.notes.includes('keteranganPengajuan')) return 'mengubah keterangan Pengajuan';
-            if (log.notes.includes('gambarUrl')) return 'mengubah file Gambar/Desain';
-            if (log.notes.includes('keteranganGambar')) return 'mengubah keterangan Gambar';
-            if (log.notes.includes('rabUrl')) return 'mengubah file RAB';
-            if (log.notes.includes('keteranganRab')) return 'mengubah keterangan RAB';
-            if (log.notes.includes('gaManagerApprovalUrl')) return 'mengubah file Approval Manager';
-            if (log.notes.includes('keteranganGaManager')) return 'mengubah keterangan Approval Manager';
-            if (log.notes.includes('prUrl')) return 'mengubah file PR Final';
-            if (log.notes.includes('keteranganPr')) return 'mengubah keterangan PR Final';
-            if (log.notes.includes('verifikasiUrls')) return 'mengubah file Verifikasi';
-            if (log.notes.includes('keteranganVerifikasi')) return 'mengubah keterangan Verifikasi';
-            if (log.notes.includes('keteranganSelesai')) return 'mengubah keterangan Penyelesaian';
+            const noteLower = log.notes.toLowerCase();
+            if (noteLower.includes('suratcabang')) return 'mengubah file Surat Permohonan';
+            if (noteLower.includes('keteranganpengajuan')) return 'mengubah keterangan Pengajuan';
+            if (noteLower.includes('gambarurl')) return 'mengubah file Gambar/Desain';
+            if (noteLower.includes('keterangangambar')) return 'mengubah keterangan Gambar';
+            if (noteLower.includes('raburl')) return 'mengubah file RAB';
+            if (noteLower.includes('keteranganrab')) return 'mengubah keterangan RAB';
+            if (noteLower.includes('gamanagerapprovalurl')) return 'mengubah file Approval Manager';
+            if (noteLower.includes('keterangangamanager')) return 'mengubah keterangan Approval Manager';
+            if (noteLower.includes('prurl')) return 'mengubah file PR Final';
+            if (noteLower.includes('keteranganpr')) return 'mengubah keterangan PR Final';
+            if (noteLower.includes('verifikasiurls')) return 'mengubah file Verifikasi';
+            if (noteLower.includes('keteranganverifikasi')) return 'mengubah keterangan Verifikasi';
+            if (noteLower.includes('keteranganselesai')) return 'mengubah keterangan Penyelesaian';
             return 'memperbarui data';
         }
 
@@ -233,11 +122,123 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
         return labels[log.action] || log.action;
     };
 
-    // Determine the most recent reject/revision note
+    const isSystemNote = (note: string | null) => {
+        if (!note) return true;
+        const systemNotes = [
+            'Mengajukan permohonan baru',
+            'Uploaded drawings/designs',
+            'Created RAB with items',
+            'GA Manager approved the budget',
+            'Cabang uploaded approved PR document',
+            'GA Staff verified specifications and items',
+            'Procurement process completed',
+            'Permohonan ditolak',
+            'Revisi diperlukan'
+        ];
+        return systemNotes.includes(note) || note.startsWith('Updated file') || note.startsWith('Mengubah keterangan:');
+    };
+
+    const renderFileLink = (url: string | null, label: string, field: string, canEdit: boolean, canDelete: boolean = false, key?: string) => {
+        if (!url) return null;
+        return (
+            <div key={key} className="flex items-center gap-3 p-3 mt-2 bg-muted/50 border rounded-md group/file">
+                <FileText className="h-5 w-5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline block truncate">{label}</a>
+                </div>
+                <PRFileActions prId={pr.id} field={field} canEdit={canEdit && pr.status !== 'COMPLETED'} canDelete={canDelete && pr.status !== 'COMPLETED'} />
+                <Button variant="secondary" size="sm" className="gap-2 shrink-0" asChild>
+                    <Link href={url} target="_blank" rel="noopener noreferrer">
+                        <span className="hidden sm:inline">Lihat File</span>
+                        <ExternalLink className="h-4 w-4" />
+                    </Link>
+                </Button>
+            </div>
+        );
+    };
+
+    const renderMultiFiles = (urls: string | null, labelPrefix: string, field: string, canEdit: boolean) => {
+        if (!urls) return null;
+        const urlList = urls.split(',').filter(Boolean);
+        return urlList.map((url, idx) => renderFileLink(url, `${labelPrefix} ${idx + 1}`, field, canEdit, true, `file-${idx}`));
+    };
+
+    const formatCurrency = (amount: string | number) => {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(amount));
+    };
+
+    const totalAmount = items.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
+
+    const getActiveIndex = (): number => {
+        const statusMap: Record<string, number> = {
+            'PENDING_GAMBAR': 1,
+            'PENDING_RAB': 2,
+            'PENDING_GA_MANAGER': 3,
+            'PENDING_CABANG_PR': 4,
+            'PENDING_VERIFIKASI': 5,
+            'PENDING_PENGADAAN': 6,
+            'COMPLETED': 7,
+        };
+        if (statusMap[pr.status]) return statusMap[pr.status];
+        if (pr.verifikasiUrls || pr.keteranganVerifikasi) return 6;
+        if (pr.prUrl || pr.keteranganPr) return 5;
+        if (pr.gaManagerApprovalUrl || pr.keteranganGaManager) return 4;
+        if (pr.rabUrl || pr.keteranganRab) return 3;
+        if (pr.gambarUrl || pr.keteranganGambar) return 2;
+        return 1;
+    };
+    const activeIndex = getActiveIndex();
+
+    const logStepMapping = new Map<string, number>();
+    const logIsRevisionFix = new Map<string, boolean>();
+    let inferredStep = 0;
+    [...logs].reverse().forEach(({ log }) => {
+        if (log.action === 'AJUKAN') inferredStep = 0;
+        else if (log.action === 'UPLOAD_GAMBAR') inferredStep = 1;
+        else if (log.action === 'CREATE_RAB') inferredStep = 2;
+        else if (log.action === 'APPROVE_GA_MANAGER') inferredStep = 3;
+        else if (log.action === 'SUBMIT_PR') inferredStep = 4;
+        else if (log.action === 'VERIFIKASI') inferredStep = 5;
+        else if (log.action === 'COMPLETE') inferredStep = 6;
+        
+        let stepIdx = inferredStep;
+        if (log.action === 'UPDATE_FILE' && log.notes) {
+            const noteLower = log.notes.toLowerCase();
+            if (noteLower.includes('suratcabang') || noteLower.includes('pengajuan')) stepIdx = 0;
+            else if (noteLower.includes('gambar')) stepIdx = 1;
+            else if (noteLower.includes('rab')) stepIdx = 2;
+            else if (noteLower.includes('gamanager')) stepIdx = 3;
+            else if (noteLower.includes('prurl') || noteLower.includes('keteranganpr')) stepIdx = 4;
+            else if (noteLower.includes('verifikasi')) stepIdx = 5;
+            else if (noteLower.includes('selesai')) stepIdx = 6;
+        } else if (log.action === 'REVISION' || log.action === 'REJECT') {
+            stepIdx = Math.min(inferredStep + 1, 6);
+        }
+        
+        logStepMapping.set(log.id, stepIdx);
+        inferredStep = Math.max(inferredStep, stepIdx);
+    });
+
+    logs.forEach(({ log }, idx) => {
+        const stepIdx = logStepMapping.get(log.id)!;
+        if (log.action !== 'REVISION' && log.action !== 'REJECT') {
+            const hasPastRevisionInStep = logs.slice(idx + 1).some(l => logStepMapping.get(l.log.id) === stepIdx && (l.log.action === 'REVISION' || l.log.action === 'REJECT'));
+            const hasPastRevisionInNextStep = logs.slice(idx + 1).some(l => logStepMapping.get(l.log.id) === stepIdx + 1 && (l.log.action === 'REVISION' || l.log.action === 'REJECT'));
+            if (hasPastRevisionInStep || hasPastRevisionInNextStep) logIsRevisionFix.set(log.id, true);
+        }
+    });
+
     const exceptionLog = logs.find(l => l.log.action === 'REJECT' || l.log.action === 'REVISION');
-    const exceptionNotes = exceptionLog?.log.notes;
-    const exceptionLogId = exceptionLog?.log.id;
-    const canEditException = exceptionLog?.log.actorId === session.user.id || session.user.role === 'GA_MANAGER';
+
+    const workflowSteps = [
+        { title: "1. Permohonan Diajukan (CABANG)", index: 0, noteField: "keteranganPengajuan" as const, noteValue: pr.keteranganPengajuan, canEdit: pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER', fileRenderer: () => renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'), hasFile: !!pr.suratCabangUrl },
+        { title: "2. Gambar & Desain (GA STAFF)", index: 1, noteField: "keteranganGambar" as const, noteValue: pr.keteranganGambar, canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER', fileRenderer: () => renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan', 'gambarUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'), hasFile: !!pr.gambarUrl },
+        { title: "3. Pembuatan RAB (GA STAFF)", index: 2, noteField: "keteranganRab" as const, noteValue: pr.keteranganRab, canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER', fileRenderer: () => renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)', 'rabUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'), hasFile: !!pr.rabUrl },
+        { title: "4. Approval GA Manager", index: 3, noteField: "keteranganGaManager" as const, noteValue: pr.keteranganGaManager, canEdit: session.user.role === 'GA_MANAGER', fileRenderer: () => renderFileLink(pr.gaManagerApprovalUrl, 'Approval GA Manager', 'gaManagerApprovalUrl', session.user.role === 'GA_MANAGER'), hasFile: !!pr.gaManagerApprovalUrl },
+        { title: "5. Upload PR Approved (CABANG)", index: 4, noteField: "keteranganPr" as const, noteValue: pr.keteranganPr, canEdit: pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER', fileRenderer: () => renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final', 'prUrl', pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'), hasFile: !!pr.prUrl },
+        { title: "6. Verifikasi Spesifikasi (GA STAFF)", index: 5, noteField: "keteranganVerifikasi" as const, noteValue: pr.keteranganVerifikasi, canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER', fileRenderer: () => renderMultiFiles(pr.verifikasiUrls, 'Dokumen Verifikasi', 'verifikasiUrls', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'), hasFile: !!pr.verifikasiUrls },
+        { title: "7. Selesai / Pengadaan", index: 6, noteField: "keteranganSelesai" as const, noteValue: pr.keteranganSelesai, canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER', fileRenderer: () => null, hasFile: true }
+    ];
 
     return (
         <div className="flex-1 space-y-6 p-8 pt-6 max-w-5xl mx-auto">
@@ -250,12 +251,8 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                         {requester?.location ? ` (${requester.location})` : ''} pada {new Date(pr.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
-                <div>
-                    <PRStatusBadge status={pr.status} />
-                </div>
+                <PRStatusBadge status={pr.status} />
             </div>
-
-            {/* Action Buttons */}
             {isPending && (
                 <div className="flex flex-col sm:flex-row bg-primary/5 p-4 rounded-lg border border-primary/20 sm:items-center justify-between gap-4">
                     <div>
@@ -265,7 +262,6 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                     <PRActionButtons prId={pr.id} status={pr.status} userRole={session.user.role as any} isOwner={pr.requesterId === session.user.id} />
                 </div>
             )}
-
             <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
                 <div className="col-span-1 lg:col-span-2 space-y-6">
                     <Card>
@@ -275,210 +271,50 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                         </CardHeader>
                         <CardContent className="pt-4">
                             <div className="pl-2">
-                                {[
-                                    {
-                                        title: "1. Permohonan Diajukan (CABANG)",
-                                        index: 0,
-                                        noteField: "keteranganPengajuan" as const,
-                                        noteValue: pr.keteranganPengajuan,
-                                        canEdit: pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER',
-                                        fileRenderer: () => renderFileLink(pr.suratCabangUrl, 'Surat Permohonan Cabang', 'suratCabangUrl', pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'),
-                                        hasFile: !!pr.suratCabangUrl,
-                                    },
-                                    {
-                                        title: "2. Gambar & Desain (GA STAFF)",
-                                        index: 1,
-                                        noteField: "keteranganGambar" as const,
-                                        noteValue: pr.keteranganGambar,
-                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
-                                        fileRenderer: () => renderFileLink(pr.gambarUrl, 'Gambar / Desain Perencanaan', 'gambarUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'),
-                                        hasFile: !!pr.gambarUrl,
-                                    },
-                                    {
-                                        title: "3. Pembuatan RAB (GA STAFF)",
-                                        index: 2,
-                                        noteField: "keteranganRab" as const,
-                                        noteValue: pr.keteranganRab,
-                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
-                                        fileRenderer: () => renderFileLink(pr.rabUrl, 'Dokumen RAB (Rencana Anggaran Biaya)', 'rabUrl', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'),
-                                        hasFile: !!pr.rabUrl,
-                                    },
-                                    {
-                                        title: "4. Approval GA Manager",
-                                        index: 3,
-                                        noteField: "keteranganGaManager" as const,
-                                        noteValue: pr.keteranganGaManager,
-                                        canEdit: session.user.role === 'GA_MANAGER',
-                                        fileRenderer: () => renderFileLink(pr.gaManagerApprovalUrl, 'Approval GA Manager', 'gaManagerApprovalUrl', session.user.role === 'GA_MANAGER'),
-                                        hasFile: !!pr.gaManagerApprovalUrl,
-                                    },
-                                    {
-                                        title: "5. Upload PR Approved (CABANG)",
-                                        index: 4,
-                                        noteField: "keteranganPr" as const,
-                                        noteValue: pr.keteranganPr,
-                                        canEdit: pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER',
-                                        fileRenderer: () => renderFileLink(pr.prUrl, 'Dokumen Purchase Request Final', 'prUrl', pr.requesterId === session.user.id || session.user.role === 'GA_MANAGER'),
-                                        hasFile: !!pr.prUrl,
-                                    },
-                                    {
-                                        title: "6. Verifikasi Spesifikasi (GA STAFF)",
-                                        index: 5,
-                                        noteField: "keteranganVerifikasi" as const,
-                                        noteValue: pr.keteranganVerifikasi,
-                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
-                                        fileRenderer: () => renderMultiFiles(pr.verifikasiUrls, 'Dokumen Verifikasi', 'verifikasiUrls', session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER'),
-                                        hasFile: !!pr.verifikasiUrls,
-                                    },
-                                    {
-                                        title: "7. Selesai / Pengadaan",
-                                        index: 6,
-                                        noteField: "keteranganSelesai" as const,
-                                        noteValue: pr.keteranganSelesai,
-                                        canEdit: session.user.role === 'GA_STAFF' || session.user.role === 'GA_MANAGER',
-                                        fileRenderer: () => null,
-                                        hasFile: true, // Special case: no file needed to show approved badge, but we don't show badge here anyway.
-                                    }
-                                ].map((step) => {
+                                {workflowSteps.map((step) => {
                                     const isCompleted = step.index === 6 ? pr.status === 'COMPLETED' : activeIndex > step.index || pr.status === 'COMPLETED';
                                     const isActive = activeIndex === step.index && pr.status !== 'COMPLETED';
                                     const isStepReached = activeIndex >= step.index || pr.status === 'COMPLETED';
                                     const canEditStep = step.canEdit && pr.status !== 'COMPLETED' && isStepReached;
-                                    const hasNoteValue = step.noteValue && step.noteValue.trim().length > 0;
-
-                                    const isSystemNote = (note: string | null) => {
-                                        if (!note) return true;
-                                        const systemNotes = [
-                                            'Mengajukan permohonan baru',
-                                            'Uploaded drawings/designs',
-                                            'Created RAB with items',
-                                            'GA Manager approved the budget',
-                                            'Cabang uploaded approved PR document',
-                                            'GA Staff verified specifications and items',
-                                            'Procurement process completed',
-                                            'Permohonan ditolak',
-                                            'Revisi diperlukan'
-                                        ];
-                                        return systemNotes.includes(note) || note.startsWith('Updated file') || note.startsWith('Mengubah keterangan:');
-                                    };
-
                                     const stepLogs = logs.filter(({ log }) => {
                                         const mappedIdx = logStepMapping.get(log.id);
-                                        // Special case: Step 5 (Verifikasi) should also show the fixes performed in Step 4
-                                        if (step.index === 5 && mappedIdx === 4) {
-                                            const isFix = (log.action !== 'REVISION' && log.action !== 'REJECT') && logs.some(({log: l}) => 
-                                                logStepMapping.get(l.id) === 5 && (l.action === 'REVISION' || l.action === 'REJECT') && new Date(l.createdAt) < new Date(log.createdAt)
-                                            );
-                                            if (isFix) return true;
-                                        }
-                                        return mappedIdx === step.index;
+                                        return step.index === 5 && mappedIdx === 4 ? logIsRevisionFix.get(log.id) : mappedIdx === step.index;
                                     });
-
                                     return (
-                                        <TimelineStep 
-                                            key={step.index}
-                                            title={step.title} 
-                                            isCompleted={isCompleted} 
-                                            isActive={isActive}
-                                        >
+                                        <TimelineStep key={step.index} title={step.title} isCompleted={isCompleted} isActive={isActive}>
                                             <div className="mt-3 text-sm space-y-4">
-                                                {/* Exception Badge (Reject/Revision) */}
-                                                {(() => {
-                                                    const isExceptionActive = (pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === step.index && exceptionLogId;
-                                                    
-                                                    return (
-                                                        <>
-                                                            {/* The main note for this stage (Only show if has content or is editable AND no exception is active) */}
-                                                            {(hasNoteValue || canEditStep) && !isExceptionActive && (
-                                                                <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm transition-all hover:bg-muted/20">
-                                                                    <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                                                                        <FileText className="h-3 w-3" /> Catatan / Keterangan
-                                                                    </h5>
-                                                                    <PREditableNote 
-                                                                        prId={pr.id} 
-                                                                        field={step.noteField} 
-                                                                        initialValue={step.noteValue ?? null} 
-                                                                        canEdit={canEditStep} 
-                                                                    />
-                                                                </div>
-                                                            )}
-
-                                                            {/* Rendered files */}
-                                                            {step.hasFile && (
-                                                                <div className="space-y-2">
-                                                                    {step.fileRenderer()}
-                                                                </div>
-                                                            )}
-                                                            
-                                                            {/* Approved Badge (only if passed this step and no file was uploaded) */}
-                                                            {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.hasFile && step.index !== 6 && (
-                                                                <ApprovedBadge />
-                                                            )}
-
-                                                            {/* Exception Badge */}
-                                                            {isExceptionActive && (
-                                                                <StatusBadge 
-                                                                    prId={pr.id} 
-                                                                    logId={exceptionLogId} 
-                                                                    status={pr.status as any} 
-                                                                    notes={exceptionNotes} 
-                                                                    canEdit={canEditException} 
-                                                                />
-                                                            )}
-                                                        </>
-                                                    );
-                                                })()}
-
-                                                {/* Thread Activity Logs */}
+                                                {(step.noteValue || canEditStep) && !( (pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === step.index && exceptionLog) && (
+                                                    <div className="bg-muted/10 p-3 rounded-lg border border-border/40 shadow-sm">
+                                                        <h5 className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Catatan / Keterangan</h5>
+                                                        <PREditableNote prId={pr.id} field={step.noteField} initialValue={step.noteValue ?? null} canEdit={canEditStep} />
+                                                    </div>
+                                                )}
+                                                {step.hasFile && step.fileRenderer()}
+                                                {(activeIndex > step.index || pr.status === 'COMPLETED') && !step.hasFile && step.index !== 6 && <ApprovedBadge />}
+                                                {(pr.status === 'REJECTED' || pr.status === 'REVISION') && activeIndex === step.index && exceptionLog && (
+                                                    <StatusBadge prId={pr.id} logId={exceptionLog.log.id} status={pr.status as any} notes={exceptionLog.log.notes} canEdit={exceptionLog.log.actorId === session.user.id || session.user.role === 'GA_MANAGER'} />
+                                                )}
                                                 {stepLogs.length > 0 && (
                                                     <div className="pt-3 pb-1">
                                                         <div className="flex items-center justify-between mb-4">
-                                                            <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                                                                <History className="h-3 w-3" /> Riwayat Aktivitas
-                                                            </h5>
-                                                            {/* RevisedBadge removed from header per user request */}
+                                                            <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Riwayat Aktivitas</h5>
                                                         </div>
                                                         <div className="space-y-5 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/60">
-                                                            {stepLogs.map(({ log, actor }, idx) => {
-                                                                const isSystem = isSystemNote(log.notes);
-                                                                const isRevisionFix = (log.action !== 'REVISION' && log.action !== 'REJECT') && (
-                                                                    // Case 1: Revision was requested in the same step
-                                                                    stepLogs.slice(idx + 1).some(l => l.log.action === 'REVISION' || l.log.action === 'REJECT') ||
-                                                                    // Case 2: Revision was requested in the next step (e.g., Step 5 requested a fix for Step 4)
-                                                                    logs.some(({ log: l }) => 
-                                                                        logStepMapping.get(l.id) === step.index + 1 && 
-                                                                        (l.action === 'REVISION' || l.action === 'REJECT') && 
-                                                                        new Date(l.createdAt) < new Date(log.createdAt)
-                                                                    ) ||
-                                                                    // Case 3: This log is actually a Step 4 fix being shown in Step 5
-                                                                    (step.index === 5 && logStepMapping.get(log.id) === 4)
-                                                                );
-                                                                
-
-                                                                const actionLabel = isRevisionFix ? 'telah merevisi dokumen' : getActionLabel(log);
-                                                                
+                                                            {stepLogs.map(({ log, actor }) => {
+                                                                const isRevisionFix = logIsRevisionFix.get(log.id) || (step.index === 5 && logStepMapping.get(log.id) === 4);
                                                                 return (
                                                                     <div key={log.id} className="flex gap-3 items-center relative z-10">
-                                                                        <Avatar className="h-6 w-6 border bg-background ring-4 ring-background">
-                                                                            <AvatarFallback className="text-[9px] font-bold text-primary bg-primary/10">
-                                                                                {(actor?.name || 'U').charAt(0).toUpperCase()}
-                                                                            </AvatarFallback>
-                                                                        </Avatar>
+                                                                        <Avatar className="h-6 w-6 border bg-background ring-4 ring-background"><AvatarFallback className="text-[9px] font-bold text-primary bg-primary/10">{(actor?.name || 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                                                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                                                                             <div className="flex items-center gap-2 truncate">
-                                                                                <p className="text-[13px] leading-relaxed text-foreground/90 truncate">
-                                                                                    <span className="font-bold">{actor?.name || 'Sistem'}</span>{' '}
-                                                                                    <span className="text-muted-foreground">{actionLabel}</span>
-                                                                                </p>
+                                                                                <p className="text-[13px] leading-relaxed text-foreground/90 truncate"><span className="font-bold">{actor?.name || 'Sistem'}</span> <span className="text-muted-foreground">{isRevisionFix ? 'telah merevisi dokumen' : getActionLabel(log)}</span></p>
                                                                                 {isRevisionFix && step.index !== 4 && (
                                                                                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-900/50 rounded-sm shrink-0">
                                                                                         <History className="h-2.5 w-2.5" /> Direvisi
                                                                                     </span>
                                                                                 )}
                                                                             </div>
-                                                                            <span className="text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md whitespace-nowrap shadow-sm">
-                                                                                {new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-                                                                            </span>
+                                                                            <span className="text-[11px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md">{new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -493,52 +329,34 @@ export default async function PRDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                         </CardContent>
                     </Card>
-
                     {items.length > 0 && (
                         <Card>
                             <CardHeader>
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <ReceiptText className="h-5 w-5 text-primary" />
-                                            Item Pengadaan (RAB)
-                                        </CardTitle>
-                                        <CardDescription>Detail barang/jasa yang direncanakan.</CardDescription>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Anggaran</p>
-                                        <p className="text-lg font-bold text-primary">{formatCurrency(totalAmount)}</p>
-                                    </div>
+                                    <div><CardTitle className="flex items-center gap-2"><ReceiptText className="h-5 w-5 text-primary" /> Item Pengadaan (RAB)</CardTitle></div>
+                                    <div className="text-right"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Anggaran</p><p className="text-lg font-bold text-primary">{formatCurrency(totalAmount)}</p></div>
                                 </div>
                             </CardHeader>
                             <CardContent>
                                 <div className="rounded-md border overflow-hidden">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-muted/50 border-b">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left font-medium">Item</th>
-                                                <th className="px-4 py-3 text-center font-medium">Qty</th>
-                                                <th className="px-4 py-3 text-right font-medium">Harga Satuan</th>
-                                                <th className="px-4 py-3 text-right font-medium">Subtotal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {items.map((item) => (
-                                                <tr key={item.id}>
-                                                    <td className="px-4 py-3 font-medium">{item.name}</td>
-                                                    <td className="px-4 py-3 text-center">{item.quantity}</td>
-                                                    <td className="px-4 py-3 text-right">{formatCurrency(item.price)}</td>
-                                                    <td className="px-4 py-3 text-right font-semibold">
-                                                        {formatCurrency(Number(item.price) * item.quantity)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
+                                        <thead className="bg-muted/50 border-b"><tr><th className="px-4 py-3 text-left font-medium">Item</th><th className="px-4 py-3 text-center font-medium">Qty</th><th className="px-4 py-3 text-right font-medium">Harga Satuan</th><th className="px-4 py-3 text-right font-medium">Subtotal</th></tr></thead>
+                                        <tbody className="divide-y">{items.map((item) => <tr key={item.id}><td className="px-4 py-3 font-medium">{item.name}</td><td className="px-4 py-3 text-center">{item.quantity}</td><td className="px-4 py-3 text-right">{formatCurrency(item.price)}</td><td className="px-4 py-3 text-right font-semibold">{formatCurrency(Number(item.price) * item.quantity)}</td></tr>)}</tbody>
                                     </table>
                                 </div>
                             </CardContent>
                         </Card>
                     )}
+                </div>
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader><CardTitle>Informasi Pengajuan</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-1"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Pengajuan</p><p className="text-sm font-mono font-medium">{pr.id}</p></div>
+                            <div className="space-y-1"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p><PRStatusBadge status={pr.status} /></div>
+                            <div className="space-y-1"><p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cabang</p><p className="text-sm font-medium">{requester?.location || 'Tidak diketahui'}</p></div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>
