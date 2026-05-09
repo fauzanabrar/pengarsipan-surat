@@ -23,7 +23,7 @@ const formSchema = z.object({
 export function AjukanPermohonanDialog() {
     const [open, setOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    
+
     // File/URL state
     const [uploadMode, setUploadMode] = useState<"file" | "url">("file")
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -57,7 +57,7 @@ export function AjukanPermohonanDialog() {
             }
 
             await createPurchaseRequest(values.title, fileUrl, values.keterangan || "");
-            
+
             toast.success("Permohonan berhasil diajukan");
             setOpen(false);
             form.reset();
@@ -75,7 +75,7 @@ export function AjukanPermohonanDialog() {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm" className="h-8 p-5 text-xs font-bold">
-                    <Plus className="mr-1.5 h-3.5 w-3.5" /> 
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
                     <span className="hidden xs:inline">Ajukan Permohonan</span>
                     <span className="xs:hidden">Ajukan Permohonan</span>
                 </Button>
@@ -87,10 +87,10 @@ export function AjukanPermohonanDialog() {
                         Lengkapi form di bawah ini untuk mengajukan permohonan pengadaan barang/jasa baru.
                     </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                        <div className="flex-1 overflow-y-auto px-6 py-0 space-y-6">
                             <FormField
                                 control={form.control}
                                 name="title"
@@ -107,7 +107,7 @@ export function AjukanPermohonanDialog() {
 
                             <div className="space-y-3">
                                 <FormLabel className="font-bold">Dokumen Surat Pengajuan <span className="text-red-500">*</span></FormLabel>
-                                <UniversalUploader 
+                                <UniversalUploader
                                     currentMode={uploadMode}
                                     onModeChange={setUploadMode}
                                     onFileSelected={setSelectedFile}
@@ -122,11 +122,11 @@ export function AjukanPermohonanDialog() {
                                     <FormItem>
                                         <FormLabel className="font-bold">Keterangan Tambahan (Opsional)</FormLabel>
                                         <FormControl>
-                                            <Textarea 
-                                                placeholder="Tuliskan detail tambahan jika diperlukan..." 
-                                                className="resize-none" 
+                                            <Textarea
+                                                placeholder="Tuliskan detail tambahan jika diperlukan..."
+                                                className="resize-none"
                                                 rows={4}
-                                                {...field} 
+                                                {...field}
                                             />
                                         </FormControl>
                                         <FormMessage />
