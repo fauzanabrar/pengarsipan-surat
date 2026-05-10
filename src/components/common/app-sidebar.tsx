@@ -25,7 +25,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
     const filteredGroups = sidebarGroups.map(group => ({
         ...group,
         items: group.items.filter(item => {
-            if (item.isAdminOnly && user?.role !== 'GA_MANAGER') {
+            if (item.isAdminOnly && user?.role !== 'ADMIN') {
                 return false;
             }
             return true;

@@ -37,33 +37,21 @@ export const sidebarGroups: SidebarGroup[] = [
         ]
     },
     {
-        title: "Pengaturan",
+        title: "Administrator",
         type: "group",
         items: [
             {
-                title: "Identifikasi",
-                url: "/dashboard/identifikasi",
-                icon: List,
-                isAdminOnly: true,
-            },
-            {
-                title: "Kode Surat",
-                url: "/dashboard/kode-surat",
-                icon: ListChecks,
-                isAdminOnly: true,
-            },
-            {
-                title: "Pengguna",
-                url: "/dashboard/users",
-                icon: Users,
-                isAdminOnly: true,
-            },
-            {
-                title: "Pengaturan Sistem",
+                title: "Pengaturan",
                 url: "/dashboard/settings",
                 icon: Settings,
                 isAdminOnly: true,
             },
+        ]
+    },
+    {
+        title: "Pengguna",
+        type: "group",
+        items: [
             {
                 title: "Profil",
                 url: "/dashboard/profile",
@@ -72,4 +60,3 @@ export const sidebarGroups: SidebarGroup[] = [
         ]
     }
 ]
-

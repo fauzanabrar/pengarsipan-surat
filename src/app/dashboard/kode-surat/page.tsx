@@ -1,17 +1,5 @@
-'use client';
-
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
-import { createKodeSurat, deleteKodeSurat, getKodeSuratList } from '@/features/surat/actions';
-import { useEffect, useState } from 'react';
-import { KodeSurat } from '@/db/schema';
-import { CardedTable } from '@/components/common/carded-table';
+import { auth } from "@/auth";
+import { getKodeSuratList, deleteKodeSurat } from "@/features/settings/actions";
 import {
     Table,
     TableBody,
@@ -19,157 +7,67 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@/components/ui/table';
-import { toast } from 'sonner';
+} from "@/components/ui/table";
+import { CardedTable } from "@/components/common/carded-table";
+import { KodeSuratDialog } from "@/features/settings/components/kode-surat-dialog";
+import { DeleteSettingButton } from "@/features/settings/components/delete-setting-button";
+import { Edit2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-const formSchema = z.object({
-    name: z.string().min(1, 'Nama harus diisi'),
-    code: z.string().min(1, 'Kode harus diisi'),
-});
+export default async function KodeSuratPage() {
+    const session = await auth();
+    if (session?.user?.role !== 'ADMIN') return null;
 
-export default function KodeSuratPage() {
-    const [open, setOpen] = useState(false);
-    const [list, setList] = useState<KodeSurat[]>([]);
-
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: '',
-            code: '',
-        },
-    });
-
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    async function loadData() {
-        const data = await getKodeSuratList();
-        setList(data);
-    }
-
-    async function onSubmit(values: z.infer<typeof formSchema>) {
-        try {
-            await createKodeSurat(values.name, values.code);
-            setOpen(false);
-            form.reset();
-            await loadData();
-            toast.success('Kode Surat berhasil ditambahkan');
-        } catch (error) {
-            toast.error((error as Error).message || 'Gagal menambahkan kode surat');
-        }
-    }
-
-    async function handleDelete(id: string) {
-        try {
-            await deleteKodeSurat(id);
-            await loadData();
-            toast.success('Kode Surat berhasil dihapus');
-        } catch (error) {
-            toast.error((error as Error).message || 'Gagal menghapus kode surat');
-        }
-    }
+    const data = await getKodeSuratList();
 
     return (
-        <div className="flex-1 space-y-6 p-0 max-w-7xl mx-auto w-full">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-2">
-                <div className="space-y-0.5">
-                    <h2 className="text-lg md:text-xl font-bold tracking-tight text-foreground">Kode Surat</h2>
+        <div className="max-w-4xl mx-auto space-y-6 pb-8">
+            <div className="flex items-center justify-between px-2">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Kode Surat</h2>
+                    <p className="text-sm text-muted-foreground">Kelola singkatan dan kategori kode surat.</p>
                 </div>
-                <div className="w-full sm:w-auto flex justify-end">
-                    <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Tambah
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Tambah Kode Surat</DialogTitle>
-                                <DialogDescription>
-                                    Tambahkan kode surat baru seperti Memorandum (Memo), Petunjuk Pelaksanaan (Juklak), dll.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="code"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Kode</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Contoh: Memo" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Nama</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Contoh: Memorandum" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <DialogFooter>
-                                        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-                                            Batal
-                                        </Button>
-                                        <Button type="submit">
-                                            Simpan
-                                        </Button>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
+                <KodeSuratDialog />
             </div>
 
-            <CardedTable className="mt-2">
+            <CardedTable>
                 <Table>
-                    <TableHeader className="bg-muted/30 border-t border-black/15 dark:border-white/10">
-                        <TableRow className="hover:bg-transparent border-b border-black/15 dark:border-white/10">
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground pl-4">Kode</TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nama</TableHead>
-                            <TableHead className="h-11 pr-4 w-[60px]"></TableHead>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow>
+                            <TableHead className="w-[100px]">Kode</TableHead>
+                            <TableHead>Kategori Surat</TableHead>
+                            <TableHead className="w-[120px] text-right">Aksi</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {list.length === 0 ? (
+                        {data.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={3} className="text-center text-muted-foreground h-32">
-                                    <div className="flex flex-col items-center justify-center gap-2">
-                                        <p className="text-sm font-medium">Belum ada data</p>
-                                    </div>
+                                <TableCell colSpan={3} className="text-center py-12 text-muted-foreground italic">
+                                    Belum ada data kode surat.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            list.map((item) => (
-                                <TableRow key={item.id} className="group transition-colors hover:bg-muted/40 border-b border-black/15 dark:border-white/10 last:border-0">
-                                    <TableCell className="pl-4 py-3">
-                                        <div className="font-bold text-[13px]">{item.code}</div>
-                                    </TableCell>
-                                    <TableCell className="py-3">
-                                        <div className="text-[13px]">{item.name}</div>
-                                    </TableCell>
-                                    <TableCell className="pr-4 py-3 text-right">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            className="h-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                                            onClick={() => handleDelete(item.id)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                            data.map((item) => (
+                                <TableRow key={item.id} className="group hover:bg-muted/30 transition-colors">
+                                    <TableCell className="font-bold text-primary">{item.code}</TableCell>
+                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <KodeSuratDialog 
+                                                id={item.id} 
+                                                initialData={{ name: item.name, code: item.code }} 
+                                                trigger={
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-blue-600 hover:bg-blue-50">
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Button>
+                                                }
+                                            />
+                                            <DeleteSettingButton 
+                                                id={item.id} 
+                                                onDelete={deleteKodeSurat} 
+                                                itemName={item.name} 
+                                            />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
