@@ -158,11 +158,30 @@ async function seedFromCsv() {
             rabUrl: (status === 'PENDING_GA_MANAGER' || status === 'COMPLETED') ? `https://auyesupvtgggdnjdzipf.supabase.co/storage/v1/object/public/pr-files/dummy-rab-${count}.pdf` : null,
         }).returning();
 
+        // Map category
+        let mappedCategory = 'Lainnya';
+        if (subSubKelas) {
+            const sskLower = subSubKelas.toLowerCase();
+            if (sskLower.includes('elektronik') || sskLower.includes('komputer') || sskLower.includes('laptop') || sskLower.includes('printer') || sskLower.includes('mesin') || sskLower.includes('ac ') || sskLower.includes('kamera') || sskLower.includes('monitor') || sskLower.includes('server')) {
+                mappedCategory = 'Elektronik';
+            } else if (sskLower.includes('meja') || sskLower.includes('kursi') || sskLower.includes('lemari') || sskLower.includes('rak') || sskLower.includes('furniture') || sskLower.includes('mebel') || sskLower.includes('sofa') || sskLower.includes('brankas')) {
+                mappedCategory = 'Furniture';
+            } else if (sskLower.includes('kendaraan') || sskLower.includes('mobil') || sskLower.includes('motor')) {
+                mappedCategory = 'Kendaraan';
+            } else if (sskLower.includes('bangunan') || sskLower.includes('gedung') || sskLower.includes('tanah') || sskLower.includes('renovasi')) {
+                mappedCategory = 'Bangunan';
+            } else if (sskLower.includes('jasa') || sskLower.includes('service') || sskLower.includes('layanan') || sskLower.includes('sewa')) {
+                mappedCategory = 'Jasa';
+            } else if (sskLower.includes('software') || sskLower.includes('aplikasi') || sskLower.includes('lisensi')) {
+                mappedCategory = 'Software';
+            }
+        }
+
         // 3. Create PR Item
         await db.insert(prItems).values({
             prId: pr.id,
             name: assetName,
-            category: subSubKelas || 'Lainnya',
+            category: mappedCategory,
             quantity: qty,
             price: harga.toString()
         });
@@ -178,6 +197,72 @@ async function seedFromCsv() {
 
         count++;
         if (count % 10 === 0) console.log(`✅ Processed ${count} items...`);
+    }
+
+    console.log(`\n✨ Generating extra synthetic data for pie chart...`);
+    
+    // Synthetic data list
+    const syntheticCategories = ['Elektronik', 'Furniture', 'Kendaraan', 'Bangunan', 'Jasa', 'Software', 'Lainnya'];
+    const syntheticAssets = {
+        'Elektronik': ['MacBook Pro M3', 'Dell XPS 15', 'Printer Epson L3110', 'AC Daikin 1 PK', 'TV Samsung 55"'],
+        'Furniture': ['Meja Kerja Staff', 'Kursi Ergonomis', 'Lemari Arsip Besi', 'Sofa Ruang Tamu', 'Whiteboard'],
+        'Kendaraan': ['Toyota Avanza', 'Honda Scoopy', 'Mitsubishi Triton', 'Toyota Innova Zenix'],
+        'Bangunan': ['Renovasi Plafon', 'Pengecatan Dinding', 'Perbaikan Pintu', 'Pasang Kanopi'],
+        'Jasa': ['Sewa Cleaning Service', 'Service AC Tahunan', 'Sewa Genset', 'Maintenance Jaringan'],
+        'Software': ['Lisensi Adobe CC', 'Microsoft Office 365', 'Antivirus Kaspersky', 'Langganan Zoom Pro'],
+        'Lainnya': ['Alat Tulis Kantor', 'Seragam Karyawan', 'Buku Panduan', 'Merchandise']
+    };
+
+    const userIds = Array.from(userMap.values());
+    if (userIds.length > 0) {
+        for (let i = 0; i < 70; i++) { // Add 70 more synthetic PRs
+            const cat = syntheticCategories[Math.floor(Math.random() * syntheticCategories.length)];
+            const assetsForCat = syntheticAssets[cat as keyof typeof syntheticAssets];
+            const assetName = assetsForCat[Math.floor(Math.random() * assetsForCat.length)];
+            
+            const userId = userIds[Math.floor(Math.random() * userIds.length)];
+            const status = statuses[Math.floor(Math.random() * statuses.length)];
+            
+            const createdAt = new Date(now.getTime() - Math.random() * 365 * 24 * 60 * 60 * 1000);
+            let updatedAt = new Date(createdAt);
+            if (status === 'COMPLETED' || status === 'REJECTED') {
+                updatedAt = new Date(createdAt.getTime() + Math.random() * 14 * 24 * 60 * 60 * 1000);
+                if (updatedAt > now) updatedAt = now;
+            }
+
+            const qty = Math.floor(Math.random() * 5) + 1;
+            const harga = Math.floor(Math.random() * 15000000) + 500000;
+
+            const [pr] = await db.insert(purchaseRequests).values({
+                requesterId: userId,
+                title: assetName,
+                status: status,
+                keteranganPengajuan: `Pengadaan ${assetName} (Synthetic)`,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                suratCabangUrl: `https://auyesupvtgggdnjdzipf.supabase.co/storage/v1/object/public/pr-files/dummy-surat-syn-${i}.pdf`,
+                gambarUrl: status !== 'PENDING_GAMBAR' ? `https://auyesupvtgggdnjdzipf.supabase.co/storage/v1/object/public/pr-files/dummy-img-syn-${i}.jpg` : null,
+                rabUrl: (status === 'PENDING_GA_MANAGER' || status === 'COMPLETED') ? `https://auyesupvtgggdnjdzipf.supabase.co/storage/v1/object/public/pr-files/dummy-rab-syn-${i}.pdf` : null,
+            }).returning();
+
+            await db.insert(prItems).values({
+                prId: pr.id,
+                name: assetName,
+                category: cat,
+                quantity: qty,
+                price: harga.toString()
+            });
+
+            await db.insert(approvalLogs).values({
+                prId: pr.id,
+                actorId: userId,
+                action: 'SUBMIT',
+                notes: 'Synthetic data generation',
+                createdAt: createdAt
+            });
+            count++;
+            if (count % 10 === 0) console.log(`✅ Processed ${count} items...`);
+        }
     }
 
     console.log(`\n✨ Seeding completed! Total ${count} records imported.`);
