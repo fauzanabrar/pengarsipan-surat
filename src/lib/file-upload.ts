@@ -98,7 +98,7 @@ async function uploadToSupabase(file: File, options: FileUploadOptions = {}): Pr
         throw new Error('Supabase is not configured');
     }
 
-    const bucket = options.bucket ?? 'pr-files';
+    const bucket = options.bucket ?? process.env.SUPABASE_STORAGE_BUCKET ?? 'surat-files';
     const fileName = options.fileName ?? `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
     
     const arrayBuffer = await file.arrayBuffer();
@@ -184,7 +184,7 @@ export async function deleteFile(fileUrl: string, options: FileUploadOptions = {
     }
 
     if (method === 'supabase' && isSupabaseConfigured() && fileUrl.includes('supabase.co')) {
-        const bucket = options.bucket ?? 'pr-files';
+        const bucket = options.bucket ?? process.env.SUPABASE_STORAGE_BUCKET ?? 'surat-files';
         // Extract path from URL
         const path = extractSupabasePath(fileUrl);
         if (path) {
