@@ -14,7 +14,6 @@ import { User } from '@/db/schema';
 export function ProfileForm({ user }: { user: User }) {
     const [name, setName] = useState(user.name || '');
     const [email, setEmail] = useState(user.email || '');
-    const [location, setLocation] = useState(user.location || '');
     const [isSaving, setIsSaving] = useState(false);
     
     // Avatar upload state
@@ -45,7 +44,6 @@ export function ProfileForm({ user }: { user: User }) {
             const formData = new FormData();
             formData.append('name', name);
             formData.append('email', email);
-            formData.append('location', location);
             
             if (shouldRemove) {
                 formData.append('removeAvatar', 'true');
@@ -103,18 +101,7 @@ export function ProfileForm({ user }: { user: User }) {
                             />
                         </div>
 
-                        {user.role === 'CABANG' && (
-                            <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <Label htmlFor="location">Nama Cabang / Lokasi</Label>
-                                <Input 
-                                    id="location" 
-                                    value={location} 
-                                    onChange={(e) => setLocation(e.target.value)} 
-                                    placeholder="Contoh: Cabang Makassar / Jl. Ahmad Yani"
-                                    className="border-primary/20 focus-visible:ring-primary/20"
-                                />
-                            </div>
-                        )}
+
 
                         <Button 
                             onClick={handleSave} 

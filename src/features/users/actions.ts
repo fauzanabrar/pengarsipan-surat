@@ -7,7 +7,7 @@ import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import { uploadFile } from '@/lib/file-upload';
 
-export async function updateUserRole(userId: string, newRole: 'CABANG' | 'GA_STAFF' | 'GA_MANAGER') {
+export async function updateUserRole(userId: string, newRole: 'ADMIN' | 'USER') {
     const session = await auth();
     if (!session?.user) throw new Error('Unauthorized');
 
@@ -40,15 +40,13 @@ export async function updateProfile(formData: FormData) {
 
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
-    const location = formData.get('location') as string;
     const avatarFile = formData.get('avatar') as File | null;
     const removeAvatar = formData.get('removeAvatar') === 'true';
 
-    const updateData: { name?: string; email?: string; location?: string; avatarUrl?: string | null } = {};
+    const updateData: { name?: string; email?: string; avatarUrl?: string | null } = {};
 
     if (name !== null) updateData.name = name;
     if (email !== null) updateData.email = email;
-    if (location !== null) updateData.location = location;
 
     if (removeAvatar) {
         updateData.avatarUrl = null;
