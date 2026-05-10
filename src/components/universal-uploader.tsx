@@ -11,11 +11,19 @@ interface UniversalUploaderProps {
     currentMode: "file" | "url";
     onModeChange: (mode: "file" | "url") => void;
     accept?: string;
+    initialUrl?: string;
 }
 
-export function UniversalUploader({ onFileSelected, onUrlEntered, currentMode, onModeChange, accept = ".pdf,application/pdf" }: UniversalUploaderProps) {
+export function UniversalUploader({ 
+    onFileSelected, 
+    onUrlEntered, 
+    currentMode, 
+    onModeChange, 
+    accept = ".pdf,application/pdf",
+    initialUrl = ""
+}: UniversalUploaderProps) {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [url, setUrl] = useState("");
+    const [url, setUrl] = useState(initialUrl);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;

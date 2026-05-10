@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils"
 interface UploadZoneProps {
     multiple: boolean
     onFilesSelected: (files: File[]) => void
+    accept?: string
 }
 
-export function UploadZone({ multiple, onFilesSelected }: UploadZoneProps) {
+export function UploadZone({ multiple, onFilesSelected, accept }: UploadZoneProps) {
     const [isDragging, setIsDragging] = React.useState(false)
 
     const onDrop = (e: React.DragEvent) => {
@@ -39,13 +40,14 @@ export function UploadZone({ multiple, onFilesSelected }: UploadZoneProps) {
             </div>
             <div className="text-center space-y-1">
                 <p className="font-bold text-lg dark:text-zinc-100">Click or drag {multiple ? 'files' : 'a file'} to upload</p>
-                <p className="text-sm text-muted-foreground dark:text-zinc-400">Support for PNG, JPG, PDF, and CSV (Max 10MB)
+                <p className="text-sm text-muted-foreground dark:text-zinc-400">Support for PDF files
                 </p>
             </div>
             <input
                 type="file"
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 multiple={multiple}
+                accept={accept}
                 onChange={(e) => e.target.files && onFilesSelected(Array.from(e.target.files))}
             />
         </div>

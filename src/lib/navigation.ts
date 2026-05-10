@@ -1,4 +1,4 @@
-import { Home, Settings, User, Users, Inbox, Outbox, List, ListChecks } from "lucide-react"
+import { Home, Settings, User, Users, Inbox, Send, List, ListChecks } from "lucide-react"
 
 export interface SidebarSubItem {
     title: string;
@@ -32,7 +32,7 @@ export const sidebarGroups: SidebarGroup[] = [
             {
                 title: "Surat Keluar",
                 url: "/dashboard/surat-keluar",
-                icon: Outbox,
+                icon: Send,
             },
         ]
     },

@@ -5,6 +5,7 @@ import { DynamicBreadcrumb } from "@/components/dynamic-breadcrumb"
 import { auth } from "@/auth"
 import { UserNav } from "@/components/user-nav"
 import { User } from "@/db/schema"
+import { ClientOnly } from "@/components/client-only"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const session = await auth()
@@ -23,7 +24,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
                         <DynamicBreadcrumb />
                     </div>
                     <div className="flex items-center gap-4">
-                        <UserNav user={user} />
+                        <ClientOnly>
+                            <UserNav user={user} />
+                        </ClientOnly>
                     </div>
                 </header>
                 <div className="flex-1 overflow-auto p-4 md:p-6 bg-muted/20">

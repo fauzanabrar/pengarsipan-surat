@@ -3,65 +3,49 @@ dotenv.config({ path: '.env' });
 dotenv.config({ path: '.env.local' });
 
 import { db } from './src/db';
-import { users, purchaseRequests } from './src/db/schema';
+import { users, identifikasi, kodeSurat } from './src/db/schema';
 import { hash } from 'bcryptjs';
 
 async function seed() {
     console.log('Seeding database...');
 
-    // Hash password for all test users
     const hashedPassword = await hash('password123', 10);
 
-    // Create test users
-    console.log('Creating test users...');
-    
-    const [cabangUser] = await db.insert(users).values({
-        username: 'cabang',
-        email: 'cabang@example.com',
-        name: 'User Cabang',
+    console.log('Creating admin user...');
+    const [adminUser] = await db.insert(users).values({
+        username: 'admin',
+        email: 'admin@kallatoyota.com',
+        name: 'Administrator',
         password: hashedPassword,
-        role: 'CABANG',
+        role: 'ADMIN',
     }).returning();
 
-    const [gaStaffUser] = await db.insert(users).values({
-        username: 'ga_staff',
-        email: 'ga.staff@example.com',
-        name: 'GA Staff',
+    const [userUser] = await db.insert(users).values({
+        username: 'user',
+        email: 'user@kallatoyota.com',
+        name: 'User Biasa',
         password: hashedPassword,
-        role: 'GA_STAFF',
+        role: 'USER',
     }).returning();
 
-    const [gaManagerUser] = await db.insert(users).values({
-        username: 'ga_manager',
-        email: 'ga.manager@example.com',
-        name: 'GA Manager',
-        password: hashedPassword,
-        role: 'GA_MANAGER',
-    }).returning();
+    console.log('Creating sample identifikasi...');
+    await db.insert(identifikasi).values([
+        { name: 'Chief Operation Officer', code: 'COO' },
+        { name: 'Staff', code: 'STAFF' },
+        { name: 'Kalla Toyota', code: 'KALLA-TOYOTA' },
+    ]);
 
-    console.log('Created users:');
-    console.log(`  - CABANG: ${cabangUser.username} (${cabangUser.id})`);
-    console.log(`  - GA_STAFF: ${gaStaffUser.username} (${gaStaffUser.id})`);
-    console.log(`  - GA_MANAGER: ${gaManagerUser.username} (${gaManagerUser.id})`);
-
-    // Create a sample PR in PENDING_GAMBAR state
-    console.log('\nCreating sample PR...');
-    
-    const [samplePR] = await db.insert(purchaseRequests).values({
-        requesterId: cabangUser.id,
-        title: 'Pengadaan Komputer Cabang Jakarta',
-        suratCabangUrl: 'https://example.com/surat.pdf',
-        keteranganPengajuan: 'Kebutuhan komputer baru untuk kantor cabang Jakarta',
-        status: 'PENDING_GAMBAR',
-    }).returning();
-
-    console.log(`Created sample PR: ${samplePR.title} (${samplePR.id})`);
+    console.log('Creating sample kode surat...');
+    await db.insert(kodeSurat).values([
+        { name: 'Memorandum', code: 'Memo' },
+        { name: 'Petunjuk Pelaksanaan', code: 'Juklak' },
+        { name: 'Surat Edaran', code: 'SE' },
+    ]);
 
     console.log('\n✅ Seeding completed successfully!');
     console.log('\nTest credentials:');
-    console.log('  Username: cabang | Password: password123');
-    console.log('  Username: ga_staff | Password: password123');
-    console.log('  Username: ga_manager | Password: password123');
+    console.log('  Username: admin | Password: password123 (ADMIN)');
+    console.log('  Username: user | Password: password123 (USER)');
 }
 
 seed()

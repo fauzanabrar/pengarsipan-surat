@@ -32,7 +32,7 @@ export function TablePagination({ totalItems, pageSize, currentPage }: TablePagi
     return (
         <div className="flex items-center justify-between px-2">
             <div className="flex-1 text-sm text-muted-foreground font-medium">
-                Menampilkan <span className="text-foreground">{Math.min((currentPage - 1) * pageSize + 1, totalItems)}</span> - <span className="text-foreground">{Math.min(currentPage * pageSize, totalItems)}</span> dari <span className="text-foreground">{totalItems}</span> pengadaan
+                Menampilkan <span className="text-foreground">{Math.min((currentPage - 1) * pageSize + 1, totalItems)}</span> - <span className="text-foreground">{Math.min(currentPage * pageSize, totalItems)}</span> dari <span className="text-foreground">{totalItems}</span> surat
             </div>
             <div className="flex items-center space-x-2">
                 <Button
@@ -120,18 +120,18 @@ export function TableSortHeader({ label, field, currentSort, currentOrder, class
         <button
             onClick={toggleSort}
             className={cn(
-                "flex items-center gap-1.5 hover:text-primary transition-colors focus:outline-none group",
+                "flex items-center gap-1 hover:text-primary transition-colors focus:outline-none group",
                 isSorted && "text-primary",
                 className
             )}
         >
             {icon && icon}
-            <span>{label}</span>
-            <div className="flex flex-col">
+            <span className="text-start">{label}</span>
+            <div className="flex flex-col flex-shrink-0">
                 {isSorted ? (
-                    currentOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    currentOrder === 'asc' ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />
                 ) : (
-                    <ArrowUpDown className="h-3 w-3 opacity-30 group-hover:opacity-100" />
+                    <ArrowUpDown className="h-2.5 w-2.5 opacity-20 group-hover:opacity-100" />
                 )}
             </div>
         </button>

@@ -41,8 +41,8 @@ export function CardedTable({
                     </div>
                 </CardHeader>
             )}
-            <CardContent className={cn("p-0", contentClassName)}>
-                <div className="overflow-x-auto">{children}</div>
+            <CardContent className={cn("p-0 overflow-x-auto", contentClassName)}>
+                {children}
             </CardContent>
             {footerContent && (
                 <div className="px-4 py-3 border-t border-black/5 dark:border-white/5 bg-muted/20">
