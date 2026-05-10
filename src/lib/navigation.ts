@@ -1,4 +1,4 @@
-import { Home, Settings, User, Users, ShoppingCart } from "lucide-react"
+import { Home, Settings, User, Users, Inbox, Outbox, List, ListChecks } from "lucide-react"
 
 export interface SidebarSubItem {
     title: string;
@@ -21,52 +21,53 @@ export interface SidebarGroup {
 
 export const sidebarGroups: SidebarGroup[] = [
     {
-        title: "Overview",
+        title: "Pengarsipan",
         type: "group",
         items: [
             {
-                title: "Dashboard",
-                url: "/dashboard",
-                icon: Home,
+                title: "Surat Masuk",
+                url: "/dashboard/surat-masuk",
+                icon: Inbox,
+            },
+            {
+                title: "Surat Keluar",
+                url: "/dashboard/surat-keluar",
+                icon: Outbox,
             },
         ]
     },
     {
-        title: "Asset Management",
+        title: "Pengaturan",
         type: "group",
         items: [
             {
-                title: "Pengadaan Barang Jasa",
-                url: "/dashboard/pr",
-                icon: ShoppingCart,
+                title: "Identifikasi",
+                url: "/dashboard/identifikasi",
+                icon: List,
+                isAdminOnly: true,
             },
-        ]
-    },
-    {
-        title: "Administration",
-        type: "group",
-        items: [
             {
-                title: "User Roles",
+                title: "Kode Surat",
+                url: "/dashboard/kode-surat",
+                icon: ListChecks,
+                isAdminOnly: true,
+            },
+            {
+                title: "Pengguna",
                 url: "/dashboard/users",
                 icon: Users,
                 isAdminOnly: true,
             },
-        ]
-    },
-    {
-        title: "Settings",
-        type: "group",
-        items: [
             {
-                title: "Profile",
-                url: "/dashboard/profile",
-                icon: User,
-            },
-            {
-                title: "System Settings",
+                title: "Pengaturan Sistem",
                 url: "/dashboard/settings",
                 icon: Settings,
+                isAdminOnly: true,
+            },
+            {
+                title: "Profil",
+                url: "/dashboard/profile",
+                icon: User,
             },
         ]
     }

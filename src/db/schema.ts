@@ -1,87 +1,67 @@
-import { pgTable, text, timestamp, uuid, pgEnum, decimal, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, pgEnum, integer, serial } from 'drizzle-orm/pg-core';
 
-export const roleEnum = pgEnum('role', ['CABANG', 'GA_STAFF', 'GA_MANAGER']);
-export const prStateEnum = pgEnum('pr_state', [
-    'PENDING_GAMBAR',
-    'PENDING_RAB',
-    'PENDING_GA_MANAGER',
-    'PENDING_CABANG_PR',
-    'PENDING_VERIFIKASI',
-    'PENDING_PENGADAAN',
-    'COMPLETED',
-    'REJECTED',
-    'REVISION'
-]);
+export const roleEnum = pgEnum('role', ['ADMIN', 'USER']);
+export const suratTypeEnum = pgEnum('surat_type', ['MASUK', 'KELUAR']);
 
 export const users = pgTable('users', {
     id: uuid('id').defaultRandom().primaryKey(),
     username: text('username').notNull().unique(),
-    email: text('email'), // Optional email
+    email: text('email'),
     password: text('password').notNull(),
     name: text('name'),
     avatarUrl: text('avatar_url'),
-    role: roleEnum('role').default('CABANG').notNull(),
-    location: text('location'), // Added for CABANG role
+    role: roleEnum('role').default('USER').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const purchaseRequests = pgTable('purchase_requests', {
+export const identifikasi = pgTable('identifikasi', {
     id: uuid('id').defaultRandom().primaryKey(),
-    requesterId: uuid('requester_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-    title: text('title').notNull(),
-    status: prStateEnum('status').default('PENDING_GAMBAR').notNull(),
-    
-    // Stage 1: Ajukan Permohonan (by CABANG)
-    suratCabangUrl: text('surat_cabang_url'),
-    keteranganPengajuan: text('keterangan_pengajuan'),
-    
-    // Stage 2: Upload Gambar (by GA Staff)
-    gambarUrl: text('gambar_url'),
-    keteranganGambar: text('keterangan_gambar'),
-    
-    // Stage 3: Upload RAB (by GA Staff)
-    rabUrl: text('rab_url'),
-    keteranganRab: text('keterangan_rab'),
-    
-    // Stage 4: GA Manager Approval
-    gaManagerApprovalUrl: text('ga_manager_approval_url'),
-    keteranganGaManager: text('keterangan_ga_manager'),
-    
-    // Stage 5: Upload PR Approved (by CABANG)
-    prUrl: text('pr_url'),
-    keteranganPr: text('keterangan_pr'),
-    
-    // Stage 6: Verifikasi (by GA Staff)
-    verifikasiUrls: text('verifikasi_urls'), // Comma separated URLs
-    keteranganVerifikasi: text('keterangan_verifikasi'),
-    
-    // Stage 7: Selesai (by GA Staff)
-    keteranganSelesai: text('keterangan_selesai'),
-
+    name: text('name').notNull().unique(),
+    code: text('code').notNull().unique(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const prItems = pgTable('pr_items', {
+export const kodeSurat = pgTable('kode_surat', {
     id: uuid('id').defaultRandom().primaryKey(),
-    prId: uuid('pr_id').references(() => purchaseRequests.id, { onDelete: 'cascade' }).notNull(),
-    name: text('name').notNull(),
-    category: text('category').default('Lainnya').notNull(),
-    quantity: integer('quantity').default(1).notNull(),
-    price: decimal('price', { precision: 12, scale: 2 }).notNull(),
+    name: text('name').notNull().unique(),
+    code: text('code').notNull().unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const approvalLogs = pgTable('approval_logs', {
-    id: uuid('id').defaultRandom().primaryKey(),
-    prId: uuid('pr_id').references(() => purchaseRequests.id, { onDelete: 'cascade' }).notNull(),
-    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-    action: text('action').notNull(), // e.g. 'SUBMIT', 'APPROVE', 'REJECT', 'REVISE'
-    notes: text('notes'),
+export const settings = pgTable('settings', {
+    id: serial('id').primaryKey(),
+    nomorSuratFormat: text('nomor_surat_format').default('{nomor}/{kode}/{identifikasi}/{tahun}').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const surat = pgTable('surat', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    type: suratTypeEnum('type').notNull(),
+    nomorSurat: text('nomor_surat').notNull().unique(),
+    nomorUrut: integer('nomor_urut').notNull(),
+    tanggalSurat: timestamp('tanggal_surat').notNull(),
+    identifikasiId: uuid('identifikasi_id').references(() => identifikasi.id, { onDelete: 'restrict' }).notNull(),
+    kodeSuratId: uuid('kode_surat_id').references(() => kodeSurat.id, { onDelete: 'restrict' }).notNull(),
+    perihal: text('perihal').notNull(),
+    tujuan: text('tujuan'),
+    penerima: text('penerima'),
+    picUserId: uuid('pic_user_id').references(() => users.id, { onDelete: 'restrict' }),
+    fileUrl: text('file_url'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
-export type ApprovalLog = typeof approvalLogs.$inferSelect;
+export type Identifikasi = typeof identifikasi.$inferSelect;
+export type NewIdentifikasi = typeof identifikasi.$inferInsert;
+export type KodeSurat = typeof kodeSurat.$inferSelect;
+export type NewKodeSurat = typeof kodeSurat.$inferInsert;
+export type Settings = typeof settings.$inferSelect;
+export type NewSettings = typeof settings.$inferInsert;
+export type Surat = typeof surat.$inferSelect;
+export type NewSurat = typeof surat.$inferInsert;

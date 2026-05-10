@@ -1,4 +1,4 @@
-import { Box } from "lucide-react"
+import { FileText } from "lucide-react"
 import {
     Sidebar,
     SidebarContent,
@@ -24,11 +24,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
             <SidebarHeader className="h-16 flex items-center justify-center border-b border-black/5 dark:border-white/5 px-6">
                 <div className="flex items-center gap-3 w-full">
                     <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-green-500 shadow-lg shadow-primary/20 shrink-0">
-                        <Box className="h-5 w-5 text-white stroke-[2.5]" />
+                        <FileText className="h-5 w-5 text-white stroke-[2.5]" />
                     </div>
                     <div className="flex flex-col leading-none justify-center">
                         <span className="text-[9px] font-bold tracking-[0.2em] text-muted-foreground uppercase mb-1">
-                            Manajemen Asset
+                            Pengarsipan Surat
                         </span>
                         <span className="text-base font-black bg-gradient-to-br from-primary to-green-500 bg-clip-text text-transparent">
                             KALLA TOYOTA

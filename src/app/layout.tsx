@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistem Manajemen Asset KALLA TOYOTA",
-  description: "Sistem Manajemen Asset KALLA TOYOTA",
+  title: "Sistem Pengarsipan Surat Kalla Toyota",
+  description: "Sistem Pengarsipan Surat Kalla Toyota",
 };
 
 export default function RootLayout({
