@@ -3,6 +3,8 @@ import { purchaseRequests, users } from '@/db/schema';
 import { auth } from '@/auth';
 import { eq, desc, or } from 'drizzle-orm';
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { PRTableSkeleton } from './loading';
 import { Button } from '@/components/ui/button';
 import { PRStatusBadge } from '@/features/pr/components/status-badge';
 import { getVisibilityConditions, getActionRequiredConditions } from '@/features/pr/utils';
@@ -65,33 +67,9 @@ export default async function PRQueuePage({
     const order = typeof resolvedSearchParams.order === 'string' ? resolvedSearchParams.order as 'asc' | 'desc' : 'desc';
 
     // Determine common access conditions
-    const visibility = getVisibilityConditions(userId, userRole);
     const actionRequired = getActionRequiredConditions(userId, userRole);
-    const ownRequests = eq(purchaseRequests.requesterId, userId);
 
-    // 1. Where Filters (for the main table, depends on 'view' tab)
-    const whereFilters: (SQL | undefined)[] = [];
-    if (view === 'mine') {
-        whereFilters.push(ownRequests);
-    } else if (view === 'todo') {
-        if (actionRequired) whereFilters.push(actionRequired);
-    } else {
-        if (visibility) whereFilters.push(visibility);
-    }
-
-    if (query) {
-        whereFilters.push(or(
-            ilike(purchaseRequests.title, `%${query}%`),
-            ilike(users.name, `%${query}%`),
-            ilike(users.username, `%${query}%`)
-        ));
-    }
-
-    if (statusFilter) {
-        whereFilters.push(eq(purchaseRequests.status, statusFilter as any));
-    }
-
-    // 2. Count Filters (for the "Perlu Diproses" badge, always acts like view='todo')
+    // Count Filters (for the "Perlu Diproses" badge, always acts like view='todo')
     const countFilters: (SQL | undefined)[] = [];
     if (actionRequired) countFilters.push(actionRequired);
 
@@ -101,36 +79,14 @@ export default async function PRQueuePage({
     
     const todoCount = todoCountResult.total;
 
-    // Total count for current filters (for pagination)
-    const [totalCountResult] = await db.select({ total: count() })
-        .from(purchaseRequests)
-        .leftJoin(users, eq(purchaseRequests.requesterId, users.id))
-        .where(and(...whereFilters));
-    
-    const totalItems = totalCountResult.total;
-
-    // Determine order
-    const sortFieldMap: Record<string, any> = {
-        title: purchaseRequests.title,
-        name: users.name,
-        location: users.location,
-        status: purchaseRequests.status,
-        createdAt: purchaseRequests.createdAt,
-    };
-
-    const sortField = sortFieldMap[sort] || purchaseRequests.createdAt;
-    const orderFn = order === 'asc' ? asc : desc;
-
-    const prs = await db.select({
-        pr: purchaseRequests,
-        requester: users,
-    })
-        .from(purchaseRequests)
-        .leftJoin(users, eq(purchaseRequests.requesterId, users.id))
-        .where(and(...whereFilters))
-        .orderBy(orderFn(sortField))
-        .limit(pageSize)
-        .offset((page - 1) * pageSize);
+    const suspenseKey = JSON.stringify({
+        q: query,
+        status: statusFilter,
+        view,
+        page,
+        sort,
+        order
+    });
 
     const getLinkWithParams = (newView: string) => {
         const params = new URLSearchParams();
@@ -192,134 +148,225 @@ export default async function PRQueuePage({
                     </div>
                 }
             >
-                <Table>
-                    <TableHeader className="bg-muted/30 border-t border-black/15 dark:border-white/10">
-                        <TableRow className="hover:bg-transparent border-b border-black/15 dark:border-white/10">
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground pl-4 min-w-[120px]">
-                                <TableSortHeader label="Judul" field="title" currentSort={sort} currentOrder={order} icon={<FileText className="h-3.5 w-3.5" />} />
-                            </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[120px]">
-                                <TableSortHeader label="Pemohon" field="name" currentSort={sort} currentOrder={order} icon={<User className="h-3.5 w-3.5" />} />
-                            </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[100px] hidden md:table-cell">
-                                <TableSortHeader label="Cabang" field="location" currentSort={sort} currentOrder={order} icon={<MapPin className="h-3.5 w-3.5" />} />
-                            </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[90px]">
-                                <TableSortHeader label="Status" field="status" currentSort={sort} currentOrder={order} />
-                            </TableHead>
-                            <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[120px] hidden lg:table-cell">
-                                <TableSortHeader label="Waktu" field="createdAt" currentSort={sort} currentOrder={order} icon={<Clock className="h-3.5 w-3.5" />} />
-                            </TableHead>
-                            <TableHead className="h-11 pr-4 w-[60px]"></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {prs.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center text-muted-foreground h-32">
-                                    <div className="flex flex-col items-center justify-center gap-2">
-                                        <div className="p-3 bg-muted/50 rounded-full">
-                                            <FileText className="h-6 w-6 text-muted-foreground/50" />
-                                        </div>
-                                        <p className="text-sm font-medium">Belum ada data</p>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            prs.map(({ pr, requester }) => {
-                                const dateObj = new Date(pr.createdAt);
-                                const dateStr = dateObj.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
-                                const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-                                return (
-                                    <TableRow key={pr.id} className="group transition-colors hover:bg-muted/40 border-b border-black/15 dark:border-white/10 last:border-0">
-                                        <TableCell className="pl-4 py-3 max-w-[200px]">
-                                            <TooltipProvider delayDuration={300}>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className="flex flex-col gap-0.5 overflow-hidden cursor-help">
-                                                            <Link href={`/dashboard/pr/${pr.id}`} className="font-bold text-[14px] group-hover:text-primary hover:underline transition-colors whitespace-normal break-words leading-tight">
-                                                                {pr.title}
-                                                            </Link>
-                                                            <span className="text-[10px] font-medium text-muted-foreground tracking-tight">ID: {pr.id.split('-')[0].toUpperCase()}</span>
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="right" className="max-w-[300px]">
-                                                        <div className="space-y-1">
-                                                            <p className="font-bold">{pr.title}</p>
-                                                            <p className="text-[10px] opacity-70">ID: {pr.id}</p>
-                                                            {pr.keteranganPengajuan && (
-                                                                <p className="text-[11px] border-t pt-1 mt-1 italic">{pr.keteranganPengajuan}</p>
-                                                            )}
-                                                        </div>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </TableCell>
-                                        <TableCell className="py-3 max-w-[180px]">
-                                            <TooltipProvider delayDuration={300}>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className="flex items-center gap-2 cursor-help">
-                                                            <Avatar className="h-8 w-8 border-2 border-primary/10 shadow-sm shrink-0">
-                                                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary font-bold text-[10px]">
-                                                                    {(requester?.name || 'U').charAt(0).toUpperCase()}
-                                                                </AvatarFallback>
-                                                            </Avatar>
-                                                            <div className="flex flex-col overflow-hidden">
-                                                                <span className="font-bold text-[13px] whitespace-normal break-words leading-tight">{requester?.name || 'User'}</span>
-                                                                <span className="text-[10px] text-muted-foreground truncate">@{requester?.username}</span>
-                                                            </div>
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="right">
-                                                        <p className="font-bold">{requester?.name}</p>
-                                                        <p className="text-[10px]">@{requester?.username}</p>
-                                                        <p className="text-[10px] opacity-70 capitalize">{requester?.role} - {requester?.location || 'Head Office'}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </TableCell>
-                                        <TableCell className="py-3 hidden md:table-cell">
-                                            <div className="flex items-center">
-                                                <span className="px-2 py-0.5 rounded-full bg-muted/50 border text-[11px] font-medium text-muted-foreground whitespace-nowrap">
-                                                    {requester?.location || (requester?.role === 'GA_STAFF' ? 'Head Office' : (requester?.username === 'cabang' ? 'Utama' : (requester?.username || '-')))}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-3 scale-[0.9] origin-left">
-                                            <PRStatusBadge status={pr.status} />
-                                        </TableCell>
-                                        <TableCell className="py-3 hidden lg:table-cell">
-                                            <div className="flex items-start gap-2">
-                                                <div className="mt-0.5 p-0.5 bg-muted rounded-sm shrink-0">
-                                                    <Clock className="h-3 w-3 text-muted-foreground" />
-                                                </div>
-                                                <div className="flex flex-col gap-0">
-                                                    <span className="text-[12px] font-bold text-foreground/80 leading-none">{dateStr}</span>
-                                                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{timeStr}</span>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="pr-4 py-3 text-right">
-                                            <Link href={`/dashboard/pr/${pr.id}`}>
-                                                <Button variant="ghost" size="sm" className="h-8 rounded-full px-3 transition-all hover:bg-primary/10 hover:text-primary font-bold text-[10px] uppercase tracking-wider">
-                                                    Detail
-                                                    <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                                                </Button>
-                                            </Link>
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            })
-                        )}
-                    </TableBody>
-                </Table>
+                <Suspense key={suspenseKey} fallback={<PRTableSkeleton />}>
+                    <PRTableData 
+                        searchParams={resolvedSearchParams} 
+                        userId={userId} 
+                        userRole={userRole} 
+                    />
+                </Suspense>
             </CardedTable>
+        </div>
+    );
+}
 
-            <div className="px-2 pb-8">
+async function PRTableData({ 
+    searchParams, 
+    userId, 
+    userRole 
+}: { 
+    searchParams: any, 
+    userId: string, 
+    userRole: string 
+}) {
+    const q = searchParams.q;
+    const query = typeof q === 'string' ? q : Array.isArray(q) ? q[0] : null;
+    
+    const s = searchParams.status;
+    const statusFilter = typeof s === 'string' ? s : Array.isArray(s) ? s[0] : null;
+
+    const v = searchParams.view;
+    const view = typeof v === 'string' ? v : 'all'; // 'todo' or 'all'
+
+    const page = Number(searchParams.page) || 1;
+    const pageSize = 10;
+    const sort = typeof searchParams.sort === 'string' ? searchParams.sort : 'createdAt';
+    const order = typeof searchParams.order === 'string' ? searchParams.order as 'asc' | 'desc' : 'desc';
+
+    const visibility = getVisibilityConditions(userId, userRole);
+    const actionRequired = getActionRequiredConditions(userId, userRole);
+    const ownRequests = eq(purchaseRequests.requesterId, userId);
+
+    const whereFilters: (SQL | undefined)[] = [];
+    if (view === 'mine') {
+        whereFilters.push(ownRequests);
+    } else if (view === 'todo') {
+        if (actionRequired) whereFilters.push(actionRequired);
+    } else {
+        if (visibility) whereFilters.push(visibility);
+    }
+
+    if (query) {
+        whereFilters.push(or(
+            ilike(purchaseRequests.title, `%${query}%`),
+            ilike(users.name, `%${query}%`),
+            ilike(users.username, `%${query}%`)
+        ));
+    }
+
+    if (statusFilter) {
+        whereFilters.push(eq(purchaseRequests.status, statusFilter as any));
+    }
+
+    const sortFieldMap: Record<string, any> = {
+        title: purchaseRequests.title,
+        name: users.name,
+        location: users.location,
+        status: purchaseRequests.status,
+        createdAt: purchaseRequests.createdAt,
+    };
+
+    const sortField = sortFieldMap[sort] || purchaseRequests.createdAt;
+    const orderFn = order === 'asc' ? asc : desc;
+
+    const [totalCountResultList, prs] = await Promise.all([
+        db.select({ total: count() })
+            .from(purchaseRequests)
+            .leftJoin(users, eq(purchaseRequests.requesterId, users.id))
+            .where(and(...whereFilters)),
+        db.select({
+            pr: purchaseRequests,
+            requester: users,
+        })
+            .from(purchaseRequests)
+            .leftJoin(users, eq(purchaseRequests.requesterId, users.id))
+            .where(and(...whereFilters))
+            .orderBy(orderFn(sortField))
+            .limit(pageSize)
+            .offset((page - 1) * pageSize)
+    ]);
+    
+    const totalItems = totalCountResultList[0].total;
+
+    return (
+        <>
+            <Table>
+                <TableHeader className="bg-muted/30 border-t border-black/15 dark:border-white/10">
+                    <TableRow className="hover:bg-transparent border-b border-black/15 dark:border-white/10">
+                        <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground pl-4 min-w-[120px]">
+                            <TableSortHeader label="Judul" field="title" currentSort={sort} currentOrder={order} icon={<FileText className="h-3.5 w-3.5" />} />
+                        </TableHead>
+                        <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[120px]">
+                            <TableSortHeader label="Pemohon" field="name" currentSort={sort} currentOrder={order} icon={<User className="h-3.5 w-3.5" />} />
+                        </TableHead>
+                        <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[100px] hidden md:table-cell">
+                            <TableSortHeader label="Cabang" field="location" currentSort={sort} currentOrder={order} icon={<MapPin className="h-3.5 w-3.5" />} />
+                        </TableHead>
+                        <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[90px]">
+                            <TableSortHeader label="Status" field="status" currentSort={sort} currentOrder={order} />
+                        </TableHead>
+                        <TableHead className="h-11 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[120px] hidden lg:table-cell">
+                            <TableSortHeader label="Waktu" field="createdAt" currentSort={sort} currentOrder={order} icon={<Clock className="h-3.5 w-3.5" />} />
+                        </TableHead>
+                        <TableHead className="h-11 pr-4 w-[60px]"></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {prs.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground h-32">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                    <div className="p-3 bg-muted/50 rounded-full">
+                                        <FileText className="h-6 w-6 text-muted-foreground/50" />
+                                    </div>
+                                    <p className="text-sm font-medium">Belum ada data</p>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ) : (
+                        prs.map(({ pr, requester }) => {
+                            const dateObj = new Date(pr.createdAt);
+                            const dateStr = dateObj.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+                            const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+                            return (
+                                <TableRow key={pr.id} className="group transition-colors hover:bg-muted/40 border-b border-black/15 dark:border-white/10 last:border-0">
+                                    <TableCell className="pl-4 py-3 max-w-[200px]">
+                                        <TooltipProvider delayDuration={300}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div className="flex flex-col gap-0.5 overflow-hidden cursor-help">
+                                                        <Link href={`/dashboard/pr/${pr.id}`} className="font-bold text-[14px] group-hover:text-primary hover:underline transition-colors whitespace-normal break-words leading-tight">
+                                                            {pr.title}
+                                                        </Link>
+                                                        <span className="text-[10px] font-medium text-muted-foreground tracking-tight">ID: {pr.id.split('-')[0].toUpperCase()}</span>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" className="max-w-[300px]">
+                                                    <div className="space-y-1">
+                                                        <p className="font-bold">{pr.title}</p>
+                                                        <p className="text-[10px] opacity-70">ID: {pr.id}</p>
+                                                        {pr.keteranganPengajuan && (
+                                                            <p className="text-[11px] border-t pt-1 mt-1 italic">{pr.keteranganPengajuan}</p>
+                                                        )}
+                                                    </div>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </TableCell>
+                                    <TableCell className="py-3 max-w-[180px]">
+                                        <TooltipProvider delayDuration={300}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div className="flex items-center gap-2 cursor-help">
+                                                        <Avatar className="h-8 w-8 border-2 border-primary/10 shadow-sm shrink-0">
+                                                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary font-bold text-[10px]">
+                                                                {(requester?.name || 'U').charAt(0).toUpperCase()}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex flex-col overflow-hidden">
+                                                            <span className="font-bold text-[13px] whitespace-normal break-words leading-tight">{requester?.name || 'User'}</span>
+                                                            <span className="text-[10px] text-muted-foreground truncate">@{requester?.username}</span>
+                                                        </div>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right">
+                                                    <p className="font-bold">{requester?.name}</p>
+                                                    <p className="text-[10px]">@{requester?.username}</p>
+                                                    <p className="text-[10px] opacity-70 capitalize">{requester?.role} - {requester?.location || 'Head Office'}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </TableCell>
+                                    <TableCell className="py-3 hidden md:table-cell">
+                                        <div className="flex items-center">
+                                            <span className="px-2 py-0.5 rounded-full bg-muted/50 border text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+                                                {requester?.location || (requester?.role === 'GA_STAFF' ? 'Head Office' : (requester?.username === 'cabang' ? 'Utama' : (requester?.username || '-')))}
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="py-3 scale-[0.9] origin-left">
+                                        <PRStatusBadge status={pr.status} />
+                                    </TableCell>
+                                    <TableCell className="py-3 hidden lg:table-cell">
+                                        <div className="flex items-start gap-2">
+                                            <div className="mt-0.5 p-0.5 bg-muted rounded-sm shrink-0">
+                                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                            </div>
+                                            <div className="flex flex-col gap-0">
+                                                <span className="text-[12px] font-bold text-foreground/80 leading-none">{dateStr}</span>
+                                                <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{timeStr}</span>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="pr-4 py-3 text-right">
+                                        <Link href={`/dashboard/pr/${pr.id}`}>
+                                            <Button variant="ghost" size="sm" className="h-8 rounded-full px-3 transition-all hover:bg-primary/10 hover:text-primary font-bold text-[10px] uppercase tracking-wider">
+                                                Detail
+                                                <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                                            </Button>
+                                        </Link>
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })
+                    )}
+                </TableBody>
+            </Table>
+
+            <div className="px-2 pb-8 mt-6">
                 <TablePagination totalItems={totalItems} pageSize={pageSize} currentPage={page} />
             </div>
-        </div>
+        </>
     );
 }

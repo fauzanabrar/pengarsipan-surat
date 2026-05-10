@@ -54,8 +54,8 @@ export function PRFilters() {
         }
         params.set('page', '1'); // Reset pagination on filter
         
-        startTransition(() => {
-            router.push(`${pathname}?${params.toString()}`);
+        router.push(`${pathname}?${params.toString()}`, {
+            scroll: false,
         });
     };
 
