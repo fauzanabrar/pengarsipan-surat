@@ -41,7 +41,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     </div>
                     <div className="flex flex-col leading-none justify-center">
                         <span className="text-[9px] font-bold tracking-[0.2em] text-muted-foreground uppercase mb-1">
-                            Manajemen Asset
+                            Manajemen Surat
                         </span>
                         <span className="text-base font-black bg-gradient-to-br from-primary to-green-500 bg-clip-text text-transparent">
                             KALLA TOYOTA

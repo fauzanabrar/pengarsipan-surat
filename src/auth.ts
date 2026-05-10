@@ -5,7 +5,7 @@ import { compare } from 'bcryptjs';
 import { loginSchema } from './lib/validations';
 import { UserService } from './lib/user-service';
 
-export const { auth, signIn, signOut } = NextAuth({
+export const { auth, signIn, signOut, handlers } = NextAuth({
     ...authConfig,
     providers: [
         Credentials({

@@ -22,19 +22,19 @@ export async function getIdentifikasiList() {
 export async function createIdentifikasi(name: string, code: string) {
     await checkAdmin();
     await db.insert(identifikasi).values({ name, code });
-    revalidatePath('/dashboard/identifikasi');
+    revalidatePath('/dashboard/settings');
 }
 
 export async function updateIdentifikasi(id: string, name: string, code: string) {
     await checkAdmin();
     await db.update(identifikasi).set({ name, code, updatedAt: new Date() }).where(eq(identifikasi.id, id));
-    revalidatePath('/dashboard/identifikasi');
+    revalidatePath('/dashboard/settings');
 }
 
 export async function deleteIdentifikasi(id: string) {
     await checkAdmin();
     await db.delete(identifikasi).where(eq(identifikasi.id, id));
-    revalidatePath('/dashboard/identifikasi');
+    revalidatePath('/dashboard/settings');
 }
 
 // Kode Surat Actions
@@ -45,19 +45,19 @@ export async function getKodeSuratList() {
 export async function createKodeSurat(name: string, code: string) {
     await checkAdmin();
     await db.insert(kodeSurat).values({ name, code });
-    revalidatePath('/dashboard/kode-surat');
+    revalidatePath('/dashboard/settings');
 }
 
 export async function updateKodeSurat(id: string, name: string, code: string) {
     await checkAdmin();
     await db.update(kodeSurat).set({ name, code, updatedAt: new Date() }).where(eq(kodeSurat.id, id));
-    revalidatePath('/dashboard/kode-surat');
+    revalidatePath('/dashboard/settings');
 }
 
 export async function deleteKodeSurat(id: string) {
     await checkAdmin();
     await db.delete(kodeSurat).where(eq(kodeSurat.id, id));
-    revalidatePath('/dashboard/kode-surat');
+    revalidatePath('/dashboard/settings');
 }
 
 // Settings Actions
@@ -85,5 +85,5 @@ export async function getUsersList() {
 export async function updateUserRole(id: string, role: 'ADMIN' | 'USER') {
     await checkAdmin();
     await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, id));
-    revalidatePath('/dashboard/users');
+    revalidatePath('/dashboard/settings');
 }

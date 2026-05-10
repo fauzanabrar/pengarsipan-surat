@@ -175,73 +175,17 @@ export async function getSuratList(
     };
 }
 
+// Helper to get lists for dropdowns
 export async function getIdentifikasiList() {
-    return await db.select().from(identifikasi).orderBy(identifikasi.name);
+    return await db.select().from(identifikasi).orderBy(asc(identifikasi.name));
 }
 
 export async function getKodeSuratList() {
-    return await db.select().from(kodeSurat).orderBy(kodeSurat.name);
+    return await db.select().from(kodeSurat).orderBy(asc(kodeSurat.name));
 }
 
 export async function getUsersList() {
-    return await db.select().from(users).orderBy(users.name);
-}
-
-export async function createIdentifikasi(name: string, code: string) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== 'ADMIN') throw new Error('Unauthorized');
-
-    const [newItem] = await db.insert(identifikasi).values({ name, code }).returning();
-    revalidatePath('/dashboard/identifikasi');
-    return newItem;
-}
-
-export async function deleteIdentifikasi(id: string) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== 'ADMIN') throw new Error('Unauthorized');
-
-    await db.delete(identifikasi).where(eq(identifikasi.id, id));
-    revalidatePath('/dashboard/identifikasi');
-}
-
-export async function createKodeSurat(name: string, code: string) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== 'ADMIN') throw new Error('Unauthorized');
-
-    const [newItem] = await db.insert(kodeSurat).values({ name, code }).returning();
-    revalidatePath('/dashboard/kode-surat');
-    return newItem;
-}
-
-export async function deleteKodeSurat(id: string) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== 'ADMIN') throw new Error('Unauthorized');
-
-    await db.delete(kodeSurat).where(eq(kodeSurat.id, id));
-    revalidatePath('/dashboard/kode-surat');
-}
-
-export async function getSettings() {
-    let [settingsItem] = await db.select().from(settings);
-    if (!settingsItem) {
-        [settingsItem] = await db.insert(settings).values({}).returning();
-    }
-    return settingsItem;
-}
-
-export async function updateSettings(nomorSuratFormat: string) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== 'ADMIN') throw new Error('Unauthorized');
-
-    const [existing] = await db.select().from(settings);
-    let updated;
-    if (existing) {
-        [updated] = await db.update(settings).set({ nomorSuratFormat, updatedAt: new Date() }).returning();
-    } else {
-        [updated] = await db.insert(settings).values({ nomorSuratFormat }).returning();
-    }
-    revalidatePath('/dashboard/settings');
-    return updated;
+    return await db.select().from(users).orderBy(asc(users.name));
 }
 
 export async function deleteSurat(id: string, type: 'MASUK' | 'KELUAR') {
