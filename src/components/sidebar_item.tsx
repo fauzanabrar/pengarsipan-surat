@@ -29,13 +29,13 @@ export function SidebarItem({ item }: SidebarItemProps) {
             <SidebarMenuItem className="w-full">
                 <div className="space-y-0 w-full flex flex-col items-start px-0">
                     <div className={cn(
-                        "w-full px-6 py-1.5 flex items-center gap-3 text-base font-semibold transition-all",
+                        "w-full px-6 py-2 flex items-center gap-3 text-base font-semibold transition-all duration-200 group cursor-pointer",
                         isParentActive 
                             ? "bg-slate-100 text-slate-900 border-l-4 border-slate-900 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-100" 
-                            : "text-foreground/70 hover:bg-slate-50 dark:hover:bg-slate-900 border-l-4 border-transparent"
+                            : "text-foreground/70 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 border-l-4 border-transparent"
                     )}>
-                        {item.icon && <item.icon className="h-5 w-5" />}
-                        <span>{item.title}</span>
+                        {item.icon && <item.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />}
+                        <span className="transition-transform duration-200 group-hover:translate-x-1">{item.title}</span>
                     </div>
                     {isParentActive && (
                         <SidebarMenuSub className="space-y-1 pl-14 border-l-0 px-0 mx-0 mt-0 pb-1">
@@ -62,13 +62,13 @@ export function SidebarItem({ item }: SidebarItemProps) {
     return (
         <SidebarMenuItem className="w-full">
             <Link href={item.url || "#"} onClick={handleNavClick} className={cn(
-                "w-full px-6 py-1.5 flex items-center gap-3 text-base font-semibold transition-all",
+                "w-full px-6 py-2 flex items-center gap-3 text-base font-semibold transition-all duration-200 group",
                 isExactMatch 
                     ? "bg-slate-100 text-slate-900 border-l-4 border-slate-900 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-100" 
-                    : "text-foreground/70 hover:bg-slate-50 dark:hover:bg-slate-900 border-l-4 border-transparent"
+                    : "text-foreground/70 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 border-l-4 border-transparent"
             )}>
-                {item.icon && <item.icon className="h-5 w-5" />}
-                <span>{item.title}</span>
+                {item.icon && <item.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />}
+                <span className="transition-transform duration-200 group-hover:translate-x-1">{item.title}</span>
             </Link>
         </SidebarMenuItem>
     )
