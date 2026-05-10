@@ -14,6 +14,7 @@ import { IdentifikasiDialog } from "@/features/settings/components/identifikasi-
 import { KodeSuratDialog } from "@/features/settings/components/kode-surat-dialog";
 import { DeleteSettingButton } from "@/features/settings/components/delete-setting-button";
 import { UserRoleToggle } from "@/features/settings/components/user-role-toggle";
+import { ThemeSettings } from "@/features/settings/components/theme-settings";
 import {
     Table,
     TableBody,
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { CardedTable } from "@/components/common/carded-table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit2, List, ListChecks, Users, Settings as SettingsIcon } from "lucide-react";
+import { Edit2, List, ListChecks, Users, Settings as SettingsIcon, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
@@ -64,6 +65,10 @@ export default async function SettingsPage() {
                         <TabsTrigger value="users" className="gap-2 h-10 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                             <Users className="h-4 w-4" />
                             Pengguna
+                        </TabsTrigger>
+                        <TabsTrigger value="appearance" className="gap-2 h-10 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                            <Palette className="h-4 w-4" />
+                            Tampilan
                         </TabsTrigger>
                     </TabsList>
                 </div>
@@ -231,6 +236,11 @@ export default async function SettingsPage() {
                             </TableBody>
                         </Table>
                     </CardedTable>
+                </TabsContent>
+
+                {/* Tampilan */}
+                <TabsContent value="appearance">
+                    <ThemeSettings />
                 </TabsContent>
             </Tabs>
         </div>
